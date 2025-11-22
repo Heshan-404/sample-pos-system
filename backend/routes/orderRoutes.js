@@ -40,6 +40,17 @@ const finishOrderValidation = [
 ];
 
 // Routes
+router.put('/update-items', (req, res) => {
+    const items = req.body; // expects array: [{orderItemId, quantity}, ...]
+
+    try {
+        const result = OrderService.updateMultipleOrderItems(items);
+        res.json({ success: true, message: "Order updated successfully", result });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 router.post('/add-item', addItemValidation, orderController.addItemToOrder.bind(orderController));
 router.get('/:tableNumber', orderController.getTableOrder.bind(orderController));
 router.post('/finish', finishOrderValidation, orderController.finishOrder.bind(orderController));

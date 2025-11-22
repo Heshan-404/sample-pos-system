@@ -176,6 +176,22 @@ class OrderService {
 
         return finish(tableNumber, discount, serviceCharge);
     }
+    // Bulk update multiple order item quantities
+    updateMultipleOrderItems(items) {
+        const update = db.transaction((items) => {
+            items.forEach(i => {
+                db.prepare(`
+                UPDATE order_items
+                SET quantity = ?
+                WHERE id = ?
+            `).run(i.quantity, i.orderItemId);
+            });
+        });
+
+        update(items);
+        return { success: true };
+    }
+
 }
 
 module.exports = new OrderService();
