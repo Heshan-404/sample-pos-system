@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { itemsAPI, ordersAPI } from '../services/api';
+import { itemsAPI, ordersAPI, printAPI } from '../services/api';
 import ConfirmModal from './ConfirmModal';
 
 const QuickBillPage = () => {
@@ -20,6 +20,7 @@ const QuickBillPage = () => {
     const [bill, setBill] = useState(null);
     const [showConfirm, setShowConfirm] = useState(false);
     const [processing, setProcessing] = useState(false);
+    const [printing, setPrinting] = useState(false);
 
     useEffect(() => {
         fetchItems();
@@ -103,7 +104,7 @@ const QuickBillPage = () => {
 
         setProcessing(true);
         try {
-            // First, create an order for a temporary table (using table 99 as quick bill)
+            // First, create an order for a temporary table (using table 30 as quick bill)
             const tempTableNumber = 30;
 
             // Add all cart items to the order
@@ -135,12 +136,15 @@ const QuickBillPage = () => {
             });
 
             if (response.data.success) {
-                setBill(response.data.data);
+                const billData = response.data.data;
+                setBill(billData);
                 clearCart();
                 // Print bill automatically
-                setTimeout(() => {
-                    window.print();
-                }, 500);
+                if (billData.historyId) {
+                    setTimeout(() => {
+                        handlePrintReceipt(billData.historyId);
+                    }, 500);
+                }
             }
         } catch (error) {
             console.error('Error processing quick bill:', error);
@@ -148,6 +152,55 @@ const QuickBillPage = () => {
         } finally {
             setProcessing(false);
             setShowConfirm(false);
+        }
+    };
+
+    const handlePrintReceipt = async (historyId) => {
+        if (!historyId) {
+            alert('No bill to print');
+            return;
+        }
+
+        setPrinting(true);
+        try {
+            const response = await printAPI.printReceipt(historyId);
+            if (response.data.success) {
+                alert('Receipt sent to printer!');
+            }
+        } catch (error) {
+            console.error('Error printing receipt:', error);
+            alert(error.response?.data?.error || 'Failed to print receipt');
+        } finally {
+            setPrinting(false);
+        }
+    };
+
+    const handleDownloadPDF = async () => {
+        if (!bill || !bill.historyId) {
+            alert('No bill to download');
+            return;
+        }
+
+        setPrinting(true);
+        try {
+            const response = await printAPI.downloadPDF(bill.historyId);
+
+            // Create a download link
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `quick-bill-${bill.id}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+
+            alert('PDF downloaded successfully!');
+        } catch (error) {
+            console.error('Error downloading PDF:', error);
+            alert('Failed to download PDF');
+        } finally {
+            setPrinting(false);
         }
     };
 
@@ -207,16 +260,24 @@ const QuickBillPage = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex gap-3 mt-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6">
                             <button
-                                onClick={() => window.print()}
-                                className="btn-secondary flex-1"
+                                onClick={() => handlePrintReceipt(bill.historyId)}
+                                className="btn-primary text-lg py-3"
+                                disabled={printing}
                             >
-                                Print Again
+                                {printing ? '🖨️ Printing...' : '🖨️ Print Receipt'}
+                            </button>
+                            <button
+                                onClick={handleDownloadPDF}
+                                className="btn-success text-lg py-3"
+                                disabled={printing}
+                            >
+                                {printing ? '📄 Generating...' : '📄 Download PDF'}
                             </button>
                             <button
                                 onClick={() => setBill(null)}
-                                className="btn-primary flex-1"
+                                className="btn-secondary text-lg py-3"
                             >
                                 New Bill
                             </button>
@@ -234,8 +295,8 @@ const QuickBillPage = () => {
                                         <button
                                             onClick={() => setActiveTab('KOT')}
                                             className={`px-4 py-2 rounded-lg font-semibold transition-all ${activeTab === 'KOT'
-                                                    ? 'bg-blue-600 text-white shadow-md'
-                                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                                ? 'bg-blue-600 text-white shadow-md'
+                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
                                                 }`}
                                         >
                                             KOT
@@ -243,8 +304,8 @@ const QuickBillPage = () => {
                                         <button
                                             onClick={() => setActiveTab('BOT')}
                                             className={`px-4 py-2 rounded-lg font-semibold transition-all ${activeTab === 'BOT'
-                                                    ? 'bg-blue-600 text-white shadow-md'
-                                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                                ? 'bg-blue-600 text-white shadow-md'
+                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
                                                 }`}
                                         >
                                             BOT
@@ -266,8 +327,8 @@ const QuickBillPage = () => {
                                                     key={item.id}
                                                     onClick={() => addItemToCart(item)}
                                                     className={`cursor-pointer p-4 rounded-lg border-2 transition-all hover:shadow-lg active:scale-95 ${isItemInCart(item.id)
-                                                            ? 'bg-blue-100 dark:bg-blue-900 border-blue-500 dark:border-blue-400 shadow-md'
-                                                            : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-blue-300'
+                                                        ? 'bg-blue-100 dark:bg-blue-900 border-blue-500 dark:border-blue-400 shadow-md'
+                                                        : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-blue-300'
                                                         }`}
                                                 >
                                                     <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">

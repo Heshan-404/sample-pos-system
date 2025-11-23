@@ -5,6 +5,7 @@ import TablesOverview from './components/TablesOverview';
 import TableOrderPage from './components/TableOrderPage';
 import BillingPage from './components/BillingPage';
 import HistoryPage from './components/HistoryPage';
+import QuickBillPage from './components/QuickBillPage';
 import Layout from './components/layout/Layout';
 import PageTransition from './components/layout/PageTransition';
 import PrinterManagement from './components/PrinterManagement';
@@ -46,6 +47,14 @@ function App() {
             element={
               <PageTransition>
                 <BillingPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/quick-bill"
+            element={
+              <PageTransition>
+                <QuickBillPage />
               </PageTransition>
             }
           />

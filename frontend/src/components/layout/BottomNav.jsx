@@ -1,9 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Package, Grid3x3, Receipt, History, Printer } from 'lucide-react';
+import { Package, Grid3x3, Receipt, History, Zap,Printer } from 'lucide-react';
 
 const navItems = [
     { path: '/', label: 'Items', icon: Package },
     { path: '/tables', label: 'Tables', icon: Grid3x3 },
+    { path: '/quick-bill', label: 'Quick Bill', icon: Zap },
     { path: '/history', label: 'History', icon: History },
     { path: '/printers', label: 'Printers', icon: Printer },
 ];
@@ -24,8 +25,8 @@ export default function BottomNav() {
                         key={path}
                         to={path}
                         className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition-all duration-200 rounded-lg ${isActive(path)
-                                ? 'text-primary-600 dark:text-primary-400'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-300'
+                            ? 'text-primary-600 dark:text-primary-400'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-300'
                             }`}
                     >
                         <div className={`p-2 rounded-xl transition-all duration-200 ${isActive(path) ? 'bg-primary-100 dark:bg-primary-900/30' : ''

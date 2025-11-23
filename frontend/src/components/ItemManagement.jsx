@@ -196,7 +196,7 @@ const ItemManagement = () => {
                                         <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                                             <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{item.id}</td>
                                             <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{item.name}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${item.price.toFixed(2)}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">LKR {item.price.toFixed(2)}</td>
                                             <td className="px-4 py-3">
                                                 <span
                                                     className={`px-3 py-1 rounded-full text-xs font-semibold ${item.category === 'KOT'

@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
-import { X, Package, Grid3x3, Receipt, History } from 'lucide-react';
+import { X, Package, Grid3x3, Receipt, History, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const navItems = [
     { path: '/', label: 'Items', icon: Package },
     { path: '/tables', label: 'Tables', icon: Grid3x3 },
+    { path: '/quick-bill', label: 'Quick Bill', icon: Zap },
     { path: '/billing', label: 'Billing', icon: Receipt },
     { path: '/history', label: 'History', icon: History },
 ];
@@ -63,8 +64,8 @@ export default function Sidebar({ isOpen, onClose }) {
                                     to={path}
                                     onClick={onClose}
                                     className={`flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold transition-all duration-200 ${isActive(path)
-                                            ? 'bg-gradient-to-r from-primary-600 to-purple-600 text-white shadow-lg'
-                                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        ? 'bg-gradient-to-r from-primary-600 to-purple-600 text-white shadow-lg'
+                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                                         }`}
                                 >
                                     <Icon className="w-5 h-5" />
