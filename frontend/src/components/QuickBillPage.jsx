@@ -1,14 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { itemsAPI, ordersAPI, printAPI } from '../services/api';
+import { itemsAPI, ordersAPI, printAPI, subcategoriesAPI } from '../services/api';
 import ConfirmModal from './ConfirmModal';
 
 const QuickBillPage = () => {
     const navigate = useNavigate();
 
     const [items, setItems] = useState([]);
+    const [subcategories, setSubcategories] = useState([]);
     const [loadingItems, setLoadingItems] = useState(false);
     const [activeTab, setActiveTab] = useState('KOT');
+    const [activeSubcategory, setActiveSubcategory] = useState(null);
     const [cart, setCart] = useState([]);
 
     // Billing options
@@ -24,7 +26,13 @@ const QuickBillPage = () => {
 
     useEffect(() => {
         fetchItems();
+        fetchSubcategories();
     }, []);
+
+    // Reset subcategory when changing main category
+    useEffect(() => {
+        setActiveSubcategory(null);
+    }, [activeTab]);
 
     const fetchItems = async () => {
         setLoadingItems(true);
@@ -39,9 +47,32 @@ const QuickBillPage = () => {
         }
     };
 
+    const fetchSubcategories = async () => {
+        try {
+            const res = await subcategoriesAPI.getAll();
+            setSubcategories(res.data?.success ? res.data.data : []);
+        } catch (err) {
+            console.error('fetchSubcategories error', err);
+            setSubcategories([]);
+        }
+    };
+
+    // Filter items by category and optionally by subcategory
     const filteredItems = useMemo(() => {
-        return items.filter((i) => (i.category || '').toUpperCase() === (activeTab || '').toUpperCase());
-    }, [items, activeTab]);
+        let filtered = items.filter((i) => (i.category || '').toUpperCase() === (activeTab || '').toUpperCase());
+
+        // If a subcategory is selected, filter further
+        if (activeSubcategory !== null) {
+            filtered = filtered.filter((i) => i.subcategoryId === activeSubcategory);
+        }
+
+        return filtered;
+    }, [items, activeTab, activeSubcategory]);
+
+    // Get subcategories for current tab
+    const currentSubcategories = useMemo(() => {
+        return subcategories.filter((sub) => sub.mainCategory === activeTab);
+    }, [subcategories, activeTab]);
 
     // Cart operations
     const addItemToCart = (item) => {
@@ -312,6 +343,33 @@ const QuickBillPage = () => {
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* Subcategory filter tabs */}
+                                {currentSubcategories.length > 0 && (
+                                    <div className="mb-4 flex flex-wrap gap-2">
+                                        <button
+                                            onClick={() => setActiveSubcategory(null)}
+                                            className={`px-3 py-1 text-sm rounded-lg transition-all ${activeSubcategory === null
+                                                    ? 'bg-green-600 text-white shadow-md'
+                                                    : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-500'
+                                                }`}
+                                        >
+                                            All
+                                        </button>
+                                        {currentSubcategories.map((subcat) => (
+                                            <button
+                                                key={subcat.id}
+                                                onClick={() => setActiveSubcategory(subcat.id)}
+                                                className={`px-3 py-1 text-sm rounded-lg transition-all ${activeSubcategory === subcat.id
+                                                        ? 'bg-green-600 text-white shadow-md'
+                                                        : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-500'
+                                                    }`}
+                                            >
+                                                {subcat.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
 
                                 {loadingItems ? (
                                     <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading items...</div>

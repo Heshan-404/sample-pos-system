@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { historyAPI } from '../services/api';
+import { historyAPI, reportsAPI } from '../services/api';
 
 const HistoryPage = () => {
     const [history, setHistory] = useState([]);
@@ -7,8 +7,19 @@ const HistoryPage = () => {
     const [selectedBill, setSelectedBill] = useState(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
 
+    // Reports state
+    const [reportStartDate, setReportStartDate] = useState('');
+    const [reportEndDate, setReportEndDate] = useState('');
+    const [itemsReportDate, setItemsReportDate] = useState('');
+    const [generatingReport, setGeneratingReport] = useState(false);
+
     useEffect(() => {
         fetchHistory();
+        // Set default dates to today
+        const today = new Date().toISOString().split('T')[0];
+        setReportStartDate(today);
+        setReportEndDate(today);
+        setItemsReportDate(today);
     }, []);
 
     const fetchHistory = async () => {
@@ -36,12 +47,124 @@ const HistoryPage = () => {
         setSelectedBill(null);
     };
 
+    const handleGenerateOrdersReport = async () => {
+        if (!reportStartDate || !reportEndDate) {
+            alert('Please select both start and end dates');
+            return;
+        }
+
+        setGeneratingReport(true);
+        try {
+            const response = await reportsAPI.generateOrdersReport(reportStartDate, reportEndDate);
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `orders-report-${reportStartDate}-to-${reportEndDate}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            alert('Orders report generated successfully!');
+        } catch (error) {
+            console.error('Error generating orders report:', error);
+            alert('Failed to generate orders report');
+        } finally {
+            setGeneratingReport(false);
+        }
+    };
+
+    const handleGenerateItemsSalesReport = async () => {
+        if (!itemsReportDate) {
+            alert('Please select a date');
+            return;
+        }
+
+        setGeneratingReport(true);
+        try {
+            const response = await reportsAPI.generateItemsSalesReport(itemsReportDate);
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `items-sales-report-${itemsReportDate}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            alert('Items sales report generated successfully!');
+        } catch (error) {
+            console.error('Error generating items sales report:', error);
+            alert('Failed to generate items sales report');
+        } finally {
+            setGeneratingReport(false);
+        }
+    };
+
     return (
         <div className="container mx-auto px-4 py-8">
             <div className="max-w-7xl mx-auto">
                 <h1 className="text-4xl font-bold text-center mb-8 text-gray-800 dark:text-white">
                     Orders History
                 </h1>
+
+                {/* Reports Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    {/* Orders Report */}
+                    <div className="card">
+                        <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">📊 Orders Report</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Generate a CSV report of all orders in a date range (opens in Excel)</p>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
+                                <input
+                                    type="date"
+                                    className="input-field"
+                                    value={reportStartDate}
+                                    onChange={(e) => setReportStartDate(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+                                <input
+                                    type="date"
+                                    className="input-field"
+                                    value={reportEndDate}
+                                    onChange={(e) => setReportEndDate(e.target.value)}
+                                />
+                            </div>
+                            <button
+                                onClick={handleGenerateOrdersReport}
+                                disabled={generatingReport}
+                                className="btn-primary w-full"
+                            >
+                                {generatingReport ? 'Generating...' : 'Generate Report'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Items Sales Report */}
+                    <div className="card">
+                        <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">📈 Items Sales Report</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Generate a CSV report of item sales for a specific date (opens in Excel)</p>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Date</label>
+                                <input
+                                    type="date"
+                                    className="input-field"
+                                    value={itemsReportDate}
+                                    onChange={(e) => setItemsReportDate(e.target.value)}
+                                />
+                            </div>
+                            <button
+                                onClick={handleGenerateItemsSalesReport}
+                                disabled={generatingReport}
+                                className="btn-success w-full"
+                            >
+                                {generatingReport ? 'Generating...' : 'Generate Report'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 <div className="card">
                     {loading ? (
@@ -136,8 +259,8 @@ const HistoryPage = () => {
                                                     ${item.subtotal.toFixed(2)}
                                                 </p>
                                                 <span className={`text-xs px-2 py-1 rounded-full ${item.itemCategory === 'KOT'
-                                                        ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                                                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                                                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                                                     }`}>
                                                     {item.itemCategory}
                                                 </span>

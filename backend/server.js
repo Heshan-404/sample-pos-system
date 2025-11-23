@@ -2,6 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
+
+// Initialize database (runs migrations)
+require('./db/init');
+
 const itemRoutes = require('./routes/itemRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const historyRoutes = require('./routes/historyRoutes');
@@ -34,8 +38,10 @@ app.use((req, res, next) => {
 app.use('/api/items', itemRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/history', historyRoutes);
+app.use('/api/subcategories', require('./routes/subcategoriesRoutes'));
 app.use('/api/printers', printerRoutes);
 app.use('/api/print', printRoutes);
+app.use('/api/reports', require('./routes/reportsRoutes'));
 
 // Health check
 app.get('/api/health', (req, res) => {

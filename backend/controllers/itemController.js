@@ -29,8 +29,8 @@ class ItemController {
         }
 
         try {
-            const { name, price, category } = req.body;
-            const item = itemService.createItem(name, price, category);
+            const { name, price, category, subcategoryId } = req.body;
+            const item = itemService.createItem(name, price, category, subcategoryId || null);
 
             res.status(201).json({
                 success: true,

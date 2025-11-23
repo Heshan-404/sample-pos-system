@@ -3,7 +3,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { itemsAPI, ordersAPI } from '../services/api';
+import { itemsAPI, ordersAPI, subcategoriesAPI } from '../services/api';
 
 // Auto Light/Dark mode + bg option 3: light bg-gray-100 / dark bg-gray-900
 // Cards: bg-white (light) / bg-gray-800 (dark)
@@ -13,6 +13,7 @@ const TableOrderPage = () => {
     const navigate = useNavigate();
 
     const [items, setItems] = useState([]);
+    const [subcategories, setSubcategories] = useState([]);
     const [currentOrder, setCurrentOrder] = useState(null);
 
     const [loadingItems, setLoadingItems] = useState(false);
@@ -20,6 +21,7 @@ const TableOrderPage = () => {
     const [submittingCart, setSubmittingCart] = useState(false);
 
     const [activeTab, setActiveTab] = useState('KOT');
+    const [activeSubcategory, setActiveSubcategory] = useState(null);
     const [cart, setCart] = useState([]);
     const [editableOrderItems, setEditableOrderItems] = useState([]);
 
@@ -33,9 +35,15 @@ const TableOrderPage = () => {
 
     useEffect(() => {
         fetchItems();
+        fetchSubcategories();
         fetchTableOrder();
         setCart([]);
     }, [tableNumber]);
+
+    // Reset subcategory when changing main category
+    useEffect(() => {
+        setActiveSubcategory(null);
+    }, [activeTab]);
 
     // check if item is in cart → highlight card
     const isItemInCart = (itemId) => cart.some((c) => c.id === itemId && !c.isCustom);
@@ -51,6 +59,17 @@ const TableOrderPage = () => {
             setItems([]);
         } finally {
             setLoadingItems(false);
+        }
+    };
+
+    // Fetch subcategories
+    const fetchSubcategories = async () => {
+        try {
+            const res = await subcategoriesAPI.getAll();
+            setSubcategories(res.data?.success ? res.data.data : []);
+        } catch (err) {
+            console.error('fetchSubcategories error', err);
+            setSubcategories([]);
         }
     };
 
@@ -84,9 +103,22 @@ const TableOrderPage = () => {
         }
     };
 
+    // Filter items by category and optionally by subcategory
     const filteredItems = useMemo(() => {
-        return items.filter((i) => (i.category || '').toUpperCase() === (activeTab || '').toUpperCase());
-    }, [items, activeTab]);
+        let filtered = items.filter((i) => (i.category || '').toUpperCase() === (activeTab || '').toUpperCase());
+
+        // If a subcategory is selected, filter further
+        if (activeSubcategory !== null) {
+            filtered = filtered.filter((i) => i.subcategoryId === activeSubcategory);
+        }
+
+        return filtered;
+    }, [items, activeTab, activeSubcategory]);
+
+    // Get subcategories for current tab
+    const currentSubcategories = useMemo(() => {
+        return subcategories.filter((sub) => sub.mainCategory === activeTab);
+    }, [subcategories, activeTab]);
 
     // ---------- CART ----------
     // Add normal item (from items grid) to cart
@@ -305,6 +337,33 @@ const TableOrderPage = () => {
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Subcategory filter tabs */}
+                            {currentSubcategories.length > 0 && (
+                                <div className="mb-4 flex flex-wrap gap-2">
+                                    <button
+                                        onClick={() => setActiveSubcategory(null)}
+                                        className={`px-3 py-1 text-sm rounded ${activeSubcategory === null
+                                                ? 'bg-green-600 text-white'
+                                                : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
+                                            }`}
+                                    >
+                                        All
+                                    </button>
+                                    {currentSubcategories.map((subcat) => (
+                                        <button
+                                            key={subcat.id}
+                                            onClick={() => setActiveSubcategory(subcat.id)}
+                                            className={`px-3 py-1 text-sm rounded ${activeSubcategory === subcat.id
+                                                    ? 'bg-green-600 text-white'
+                                                    : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
+                                                }`}
+                                        >
+                                            {subcat.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
 
                             {loadingItems ? (
                                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">Loading items...</div>

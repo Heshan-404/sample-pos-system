@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://192.168.224.97:5000/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const api = axios.create({
     baseURL: API_BASE_URL,
@@ -31,10 +31,31 @@ export const historyAPI = {
     getById: (id) => api.get(`/history/${id}`),
 };
 
+// Subcategories API
+export const subcategoriesAPI = {
+    getAll: () => api.get('/subcategories'),
+    getByCategory: (category) => api.get(`/subcategories/category/${category}`),
+    create: (data) => api.post('/subcategories', data),
+    update: (id, data) => api.put(`/subcategories/${id}`, data),
+    delete: (id) => api.delete(`/subcategories/${id}`),
+};
+
 // Print API
 export const printAPI = {
     printReceipt: (historyId) => api.post(`/print/receipt/${historyId}`),
     downloadPDF: (historyId) => api.get(`/print/pdf/${historyId}`, { responseType: 'blob' }),
+};
+
+// Reports API
+export const reportsAPI = {
+    generateOrdersReport: (startDate, endDate) => api.get('/reports/orders', {
+        params: { startDate, endDate },
+        responseType: 'blob'
+    }),
+    generateItemsSalesReport: (date) => api.get('/reports/items-sales', {
+        params: { date },
+        responseType: 'blob'
+    }),
 };
 
 export default api;

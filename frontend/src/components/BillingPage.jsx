@@ -64,6 +64,19 @@ const BillingPage = () => {
                 setCurrentOrder(null);
                 setDiscount(0);
                 setServiceCharge(false);
+
+                // Auto-print receipt after finishing bill
+                const historyId = response.data.data.historyId;
+                if (historyId) {
+                    try {
+                        await printAPI.printReceipt(historyId);
+                        console.log('Receipt printed successfully');
+                    } catch (printError) {
+                        console.error('Auto-print failed:', printError);
+                        // Don't show error - print button will still be available
+                        // User can print manually if auto-print fails
+                    }
+                }
             }
         } catch (error) {
             console.error('Error finishing bill:', error);

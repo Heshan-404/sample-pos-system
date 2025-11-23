@@ -1,23 +1,39 @@
 const db = require('../db/database');
 
 class ItemService {
-    // Get all items (no filtering on backend)
+    // Get all items with subcategory information
     getAllItems() {
-        const stmt = db.prepare('SELECT * FROM items ORDER BY category, name');
+        const stmt = db.prepare(`
+            SELECT 
+                items.*, 
+                subcategories.name as subcategoryName,
+                subcategories.mainCategory as subcategoryMainCategory
+            FROM items
+            LEFT JOIN subcategories ON items.subcategoryId = subcategories.id
+            ORDER BY items.category, items.name
+        `);
         return stmt.all();
     }
 
     // Create a new item
-    createItem(name, price, category) {
+    createItem(name, price, category, subcategoryId = null) {
         const stmt = db.prepare(`
-      INSERT INTO items (name, price, category) 
-      VALUES (?, ?, ?)
+      INSERT INTO items (name, price, category, subcategoryId) 
+      VALUES (?, ?, ?, ?)
     `);
 
-        const result = stmt.run(name, price, category);
+        const result = stmt.run(name, price, category, subcategoryId);
 
-        // Return the created item
-        const getStmt = db.prepare('SELECT * FROM items WHERE id = ?');
+        // Return the created item with subcategory info
+        const getStmt = db.prepare(`
+            SELECT 
+                items.*, 
+                subcategories.name as subcategoryName,
+                subcategories.mainCategory as subcategoryMainCategory
+            FROM items
+            LEFT JOIN subcategories ON items.subcategoryId = subcategories.id
+            WHERE items.id = ?
+        `);
         return getStmt.get(result.lastInsertRowid);
     }
 
