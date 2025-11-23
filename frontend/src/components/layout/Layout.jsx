@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
+import ScrollUpButton from "../ScrollUpButton.jsx";
 
 export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -30,6 +31,7 @@ export default function Layout({ children }) {
           {children}
         </div>
       </main>
+        <ScrollUpButton />
 
       {/* Bottom Navigation - Mobile only */}
       <BottomNav />

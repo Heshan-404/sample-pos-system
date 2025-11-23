@@ -233,8 +233,9 @@ try {
   createTables();
 
   // Run migrations
-  const { migrateSubcategories } = require('./migrations');
+  const { migrateSubcategories, migratePaymentFields } = require('./migrations');
   migrateSubcategories();
+  migratePaymentFields();
 
   // Check if items already exist
   const count = db.prepare('SELECT COUNT(*) as count FROM items').get();

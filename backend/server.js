@@ -34,7 +34,7 @@ app.use((req, res, next) => {
     next();
 });
 
-// Routes
+// API Routes
 app.use('/api/items', itemRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/history', historyRoutes);
@@ -48,13 +48,38 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', message: 'Server is running' });
 });
 
-// 404 handler
-app.use((req, res) => {
-    res.status(404).json({
-        success: false,
-        error: 'Route not found'
+// Serve static files from frontend build (production)
+const path = require('path');
+const fs = require('fs');
+const frontendDistPath = path.join(__dirname, '../frontend/dist');
+
+// Check if dist folder exists
+if (fs.existsSync(frontendDistPath)) {
+    console.log('📦 Serving frontend from:', frontendDistPath);
+    app.use(express.static(frontendDistPath));
+
+    // Serve index.html for all non-API routes (SPA support)
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(frontendDistPath, 'index.html'));
     });
-});
+} else {
+    console.log('⚠️  Frontend build not found. Run: npm run build in frontend folder');
+
+    // 404 handler for missing frontend
+    app.use((req, res) => {
+        if (req.path.startsWith('/api')) {
+            res.status(404).json({
+                success: false,
+                error: 'API route not found'
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                error: 'Frontend not built. Run: cd frontend && npm run build'
+            });
+        }
+    });
+}
 
 // Error handler
 app.use((err, req, res, next) => {

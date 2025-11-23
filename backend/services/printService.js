@@ -130,6 +130,18 @@ async function generatePDFReceipt(billData) {
 
             doc.moveDown(0.5);
             doc.strokeColor('#000000').moveTo(10, doc.y).lineTo(doc.page.width - 10, doc.y).stroke();
+            doc.moveDown(0.3);
+
+            // Payment method and additional items
+            doc.fontSize(9).font('Helvetica');
+            if (orderData.additionalItems) {
+                doc.text(`Additional: ${orderData.additionalItems}`, { align: 'left' });
+                doc.moveDown(0.2);
+            }
+            doc.text(`Payment: ${orderData.paymentMethod || 'CASH'}`, { align: 'left' });
+
+            doc.moveDown(0.5);
+            doc.strokeColor('#000000').moveTo(10, doc.y).lineTo(doc.page.width - 10, doc.y).stroke();
             doc.moveDown(0.5);
 
             // Thank you message
@@ -232,6 +244,13 @@ function formatReceipt(billData) {
     const totalSpacing = 46 - 4 - 'TOTAL:'.length - totalAmountStr.length;
     receipt += '    TOTAL:' + ' '.repeat(Math.max(totalSpacing, 1)) + totalAmountStr + '\n';
     receipt += '    ===========================================\n';
+    receipt += '\n';
+
+    // Payment method and additional items
+    if (billData.additionalItems) {
+        receipt += `    Additional: ${billData.additionalItems}\n`;
+    }
+    receipt += `    Payment Method: ${billData.paymentMethod || 'CASH'}\n`;
     receipt += '\n';
 
     // Thank you message

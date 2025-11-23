@@ -15,7 +15,9 @@ const QuickBillPage = () => {
 
     // Billing options
     const [discount, setDiscount] = useState(0);
-    const [serviceCharge, setServiceCharge] = useState(false);
+    const [serviceCharge, setServiceCharge] = useState(true); // Default to true
+    const [paymentMethod, setPaymentMethod] = useState('CASH');
+    const [additionalItems, setAdditionalItems] = useState('');
     const [showBillingOptions, setShowBillingOptions] = useState(false);
 
     // Bill completion
@@ -107,7 +109,9 @@ const QuickBillPage = () => {
     const clearCart = () => {
         setCart([]);
         setDiscount(0);
-        setServiceCharge(false);
+        setServiceCharge(true);
+        setPaymentMethod('CASH');
+        setAdditionalItems('');
         setShowBillingOptions(false);
     };
 
@@ -164,6 +168,8 @@ const QuickBillPage = () => {
                 tableNumber: tempTableNumber,
                 discount: parseFloat(discount || 0),
                 serviceCharge: serviceCharge,
+                paymentMethod: paymentMethod,
+                additionalItems: additionalItems,
             });
 
             if (response.data.success) {
@@ -350,8 +356,8 @@ const QuickBillPage = () => {
                                         <button
                                             onClick={() => setActiveSubcategory(null)}
                                             className={`px-3 py-1 text-sm rounded-lg transition-all ${activeSubcategory === null
-                                                    ? 'bg-green-600 text-white shadow-md'
-                                                    : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-500'
+                                                ? 'bg-green-600 text-white shadow-md'
+                                                : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-500'
                                                 }`}
                                         >
                                             All
@@ -361,8 +367,8 @@ const QuickBillPage = () => {
                                                 key={subcat.id}
                                                 onClick={() => setActiveSubcategory(subcat.id)}
                                                 className={`px-3 py-1 text-sm rounded-lg transition-all ${activeSubcategory === subcat.id
-                                                        ? 'bg-green-600 text-white shadow-md'
-                                                        : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-500'
+                                                    ? 'bg-green-600 text-white shadow-md'
+                                                    : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-500'
                                                     }`}
                                             >
                                                 {subcat.name}
@@ -468,6 +474,50 @@ const QuickBillPage = () => {
 
                                         {showBillingOptions && (
                                             <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg space-y-3">
+
+                                                {/* Payment Method */}
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                                                        Payment Method
+                                                    </label>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPaymentMethod('CASH')}
+                                                            className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${paymentMethod === 'CASH'
+                                                                    ? 'bg-green-600 text-white shadow-lg'
+                                                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                                                                }`}
+                                                        >
+                                                            💵 Cash
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPaymentMethod('CARD')}
+                                                            className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${paymentMethod === 'CARD'
+                                                                    ? 'bg-blue-600 text-white shadow-lg'
+                                                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                                                                }`}
+                                                        >
+                                                            💳 Card
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Additional Items */}
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                                                        Additional Items (Optional)
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                        value={additionalItems}
+                                                        onChange={(e) => setAdditionalItems(e.target.value)}
+                                                        placeholder="e.g., Extra napkins, spoon"
+                                                    />
+                                                </div>
+
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                                                         Discount (LKR)

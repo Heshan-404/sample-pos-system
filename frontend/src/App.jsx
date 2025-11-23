@@ -10,14 +10,12 @@ import Layout from './components/layout/Layout';
 import PageTransition from './components/layout/PageTransition';
 import PrinterManagement from './components/PrinterManagement';
 import './index.css';
-import ScrollUpButton from "./components/ScrollUpButton.jsx";
 
 function App() {
     const location = useLocation();
 
     return (
         <Layout>
-            <ScrollUpButton />
             <AnimatePresence mode="wait">
                 <Routes location={location} key={location.pathname}>
                     <Route

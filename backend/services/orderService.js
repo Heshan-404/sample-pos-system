@@ -98,8 +98,8 @@ class OrderService {
     }
 
     // Finish order and generate bill
-    finishOrder(tableNumber, discount = 0, serviceCharge = false) {
-        const finish = db.transaction((tableNum, disc, svcCharge) => {
+    finishOrder(tableNumber, discount = 0, serviceCharge = false, paymentMethod = 'CASH', additionalItems = '') {
+        const finish = db.transaction((tableNum, disc, svcCharge, payMethod, addItems) => {
             // Get the open order
             const orderData = this.getTableOrder(tableNum);
 
@@ -117,8 +117,9 @@ class OrderService {
             const historyStmt = db.prepare(`
         INSERT INTO orders_history (
           orderId, tableNumber, subtotal, discount, 
-          serviceCharge, serviceChargeAmount, finalAmount, closed_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          serviceCharge, serviceChargeAmount, finalAmount, closed_at,
+          paymentMethod, additionalItems
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
             const historyResult = historyStmt.run(
@@ -129,7 +130,9 @@ class OrderService {
                 svcCharge ? 1 : 0,
                 serviceChargeAmount,
                 finalAmount,
-                closedAt
+                closedAt,
+                payMethod,
+                addItems
             );
 
             const historyId = historyResult.lastInsertRowid;
@@ -174,7 +177,7 @@ class OrderService {
             };
         });
 
-        return finish(tableNumber, discount, serviceCharge);
+        return finish(tableNumber, discount, serviceCharge, paymentMethod, additionalItems);
     }
 
     // Update single order item quantity
