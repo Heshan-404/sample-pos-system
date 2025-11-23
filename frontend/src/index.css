@@ -7,7 +7,8 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
+  color-scheme: dark;
+  /* Force dark mode only */
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
 
@@ -15,11 +16,45 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Safe area insets for iOS devices */
+  --sat: env(safe-area-inset-top);
+  --sar: env(safe-area-inset-right);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+}
+
+* {
+  /* Disable text selection for a more native app feel (optional) */
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  /* Prevent pull-to-refresh on mobile */
+  overscroll-behavior-y: contain;
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+}
+
+/* Hide scrollbar but keep functionality */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.5);
 }
 
 @layer components {
@@ -45,5 +80,29 @@ body {
 
   .card {
     @apply bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-all duration-200 hover:shadow-xl;
+  }
+
+  /* Safe area utilities */
+  .safe-area-top {
+    padding-top: var(--sat);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: var(--sab);
+  }
+
+  .safe-area-left {
+    padding-left: var(--sal);
+  }
+
+  .safe-area-right {
+    padding-right: var(--sar);
+  }
+
+  .safe-area-inset {
+    padding-top: var(--sat);
+    padding-right: var(--sar);
+    padding-bottom: var(--sab);
+    padding-left: var(--sal);
   }
 }

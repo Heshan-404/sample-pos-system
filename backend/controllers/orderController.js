@@ -80,6 +80,51 @@ class OrderController {
             });
         }
     }
+
+    // PUT /orders/update-item/:orderItemId - Update order item quantity
+    updateOrderItemQuantity(req, res) {
+        try {
+            const { orderItemId } = req.params;
+            const { quantity } = req.body;
+
+            if (!quantity || quantity < 1) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Quantity must be at least 1'
+                });
+            }
+
+            const result = orderService.updateOrderItemQuantity(parseInt(orderItemId), parseInt(quantity));
+
+            res.json({
+                success: true,
+                message: result.message
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    // DELETE /orders/remove-item/:orderItemId - Remove order item
+    removeOrderItem(req, res) {
+        try {
+            const { orderItemId } = req.params;
+            const result = orderService.removeOrderItem(parseInt(orderItemId));
+
+            res.json({
+                success: true,
+                message: result.message
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
 }
 
 module.exports = new OrderController();

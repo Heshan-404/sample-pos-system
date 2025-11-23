@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ordersAPI } from '../services/api';
 import ConfirmModal from './ConfirmModal';
 
 const BillingPage = () => {
-    const [selectedTable, setSelectedTable] = useState(1);
+    const [searchParams] = useSearchParams();
+    const tableFromUrl = searchParams.get('table');
+    const [selectedTable, setSelectedTable] = useState(tableFromUrl ? parseInt(tableFromUrl, 10) : 1);
     const [currentOrder, setCurrentOrder] = useState(null);
     const [loading, setLoading] = useState(false);
     const [discount, setDiscount] = useState(0);
@@ -75,24 +78,22 @@ const BillingPage = () => {
     return (
         <div className="container mx-auto px-4 py-8">
             <div className="max-w-4xl mx-auto">
-                <h1 className="text-4xl font-bold text-center mb-8 text-gray-800 dark:text-white">
-                    Billing & Checkout
-                </h1>
 
-                <div className="card mb-8">
-                    <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">
-                        Select Table
-                    </h2>
-                    <select
-                        className="input-field max-w-xs"
-                        value={selectedTable}
-                        onChange={(e) => setSelectedTable(parseInt(e.target.value))}
-                    >
-                        {tableNumbers.map((num) => (
-                            <option key={num} value={num}>Table {num}</option>
-                        ))}
-                    </select>
-                </div>
+
+                {/*<div className="card mb-8">*/}
+                {/*    <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">*/}
+                {/*        Select Table*/}
+                {/*    </h2>*/}
+                {/*    <select*/}
+                {/*        className="input-field max-w-xs"*/}
+                {/*        value={selectedTable}*/}
+                {/*        onChange={(e) => setSelectedTable(parseInt(e.target.value))}*/}
+                {/*    >*/}
+                {/*        {tableNumbers.map((num) => (*/}
+                {/*            <option key={num} value={num}>Table {num}</option>*/}
+                {/*        ))}*/}
+                {/*    </select>*/}
+                {/*</div>*/}
 
                 {bill ? (
                     <div className="card bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900 dark:to-green-800">
@@ -104,30 +105,30 @@ const BillingPage = () => {
                             <h3 className="text-xl font-semibold mb-4">Order Items</h3>
                             {bill.items.map((item) => (
                                 <div key={item.id} className="flex justify-between py-2 border-b">
-                                    <span>{item.name} × {item.quantity}</span>
-                                    <span className="font-semibold">${item.subtotal.toFixed(2)}</span>
+                                    <span >{item.name} × {item.quantity}</span>
+                                    <span className="font-semibold">LKR {item.subtotal.toFixed(2)}</span>
                                 </div>
                             ))}
                             <div className="mt-4 space-y-2">
                                 <div className="flex justify-between text-lg">
                                     <span>Subtotal:</span>
-                                    <span className="font-semibold">${bill.subtotal.toFixed(2)}</span>
+                                    <span className="font-semibold">LKR {bill.subtotal.toFixed(2)}</span>
                                 </div>
                                 {bill.serviceCharge > 0 && (
                                     <div className="flex justify-between text-lg">
                                         <span>Service Charge (10%):</span>
-                                        <span className="font-semibold">+${bill.serviceChargeAmount.toFixed(2)}</span>
+                                        <span className="font-semibold">+LKR {bill.serviceChargeAmount.toFixed(2)}</span>
                                     </div>
                                 )}
                                 {bill.discount > 0 && (
                                     <div className="flex justify-between text-lg text-red-600">
                                         <span>Discount:</span>
-                                        <span className="font-semibold">-${bill.discount.toFixed(2)}</span>
+                                        <span className="font-semibold">-LKR {bill.discount.toFixed(2)}</span>
                                     </div>
                                 )}
                                 <div className="border-t-2 pt-2 flex justify-between text-2xl font-bold">
                                     <span>Total:</span>
-                                    <span className="text-green-600">${bill.finalAmount.toFixed(2)}</span>
+                                    <span className="text-green-600">LKR {bill.finalAmount.toFixed(2)}</span>
                                 </div>
                             </div>
                         </div>
@@ -152,16 +153,16 @@ const BillingPage = () => {
                                 <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                                     <div>
                                         <p className="font-medium">{item.name}</p>
-                                        <p className="text-sm text-gray-600">${item.price.toFixed(2)} × {item.quantity}</p>
+                                        <p className="text-sm text-amber-300">LKR {item.price.toFixed(2)} × {item.quantity}</p>
                                     </div>
-                                    <p className="font-bold">${item.subtotal.toFixed(2)}</p>
+                                    <p className="font-bold">LKR {item.subtotal.toFixed(2)}</p>
                                 </div>
                             ))}
                         </div>
                         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg space-y-4">
                             <h3 className="text-lg font-semibold">Billing Options</h3>
                             <div>
-                                <label className="block text-sm font-medium mb-2">Discount Amount ($)</label>
+                                <label className="block text-sm font-medium mb-2">Discount Amount (LKR )</label>
                                 <input type="number" min="0" step="0.01" className="input-field" value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0.00" />
                             </div>
                             <div className="flex items-center">
@@ -174,23 +175,23 @@ const BillingPage = () => {
                                 <h3 className="text-lg font-semibold mb-4">Bill Summary</h3>
                                 <div className="flex justify-between text-lg">
                                     <span>Subtotal:</span>
-                                    <span className="font-semibold">${calculatedBill.subtotal}</span>
+                                    <span className="font-semibold">LKR {calculatedBill.subtotal}</span>
                                 </div>
                                 {serviceCharge && (
                                     <div className="flex justify-between text-lg">
                                         <span>Service Charge (10%):</span>
-                                        <span className="font-semibold text-green-600">+${calculatedBill.serviceChargeAmount}</span>
+                                        <span className="font-semibold text-green-600">+LKR {calculatedBill.serviceChargeAmount}</span>
                                     </div>
                                 )}
                                 {parseFloat(discount) > 0 && (
                                     <div className="flex justify-between text-lg">
                                         <span>Discount:</span>
-                                        <span className="font-semibold text-red-600">-${calculatedBill.discount}</span>
+                                        <span className="font-semibold text-red-600">-LKR {calculatedBill.discount}</span>
                                     </div>
                                 )}
                                 <div className="border-t-2 pt-3 flex justify-between text-2xl font-bold">
                                     <span>Final Amount:</span>
-                                    <span className="text-primary-600">${calculatedBill.finalAmount}</span>
+                                    <span className="text-primary-600">LKR {calculatedBill.finalAmount}</span>
                                 </div>
                             </div>
                         )}
@@ -206,7 +207,7 @@ const BillingPage = () => {
                 onClose={() => setShowConfirm(false)}
                 onConfirm={handleFinishBill}
                 title="Finish Bill"
-                message={`Are you sure you want to finish the bill for Table ${selectedTable}?`}
+                message={`Are you sure you want to finish the bill for Table  ${selectedTable}?`}
             />
         </div>
     );
