@@ -40,8 +40,17 @@ const finishOrderValidation = [
 ];
 
 // Routes
+router.post("/update-multiple", (req, res) => {
+    const result = OrderService.updateMultipleOrderItems(req.body);
+    res.json(result);
+});
+
+
+
 router.post('/add-item', addItemValidation, orderController.addItemToOrder.bind(orderController));
 router.get('/:tableNumber', orderController.getTableOrder.bind(orderController));
+router.put('/update-item/:orderItemId', orderController.updateOrderItemQuantity.bind(orderController));
+router.delete('/remove-item/:orderItemId', orderController.removeOrderItem.bind(orderController));
 router.post('/finish', finishOrderValidation, orderController.finishOrder.bind(orderController));
 
 module.exports = router;

@@ -67,29 +67,27 @@ const TablesOverview = () => {
     return (
         <div className="container mx-auto px-4 py-8">
             <div className="max-w-7xl mx-auto">
-                <h1 className="text-4xl font-bold text-center mb-8 text-gray-800 dark:text-white">
-                    Tables Overview
-                </h1>
 
-                <div className="mb-6 flex justify-between items-center">
-                    <div className="flex gap-4">
-                        <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded bg-gradient-to-br from-green-100 to-green-200 border-2 border-green-400"></div>
-                            <span className="text-sm text-gray-700 dark:text-gray-300">Available</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded bg-gradient-to-br from-yellow-100 to-yellow-200 border-2 border-yellow-400"></div>
-                            <span className="text-sm text-gray-700 dark:text-gray-300">In Progress</span>
-                        </div>
-                    </div>
-                    <button
-                        onClick={fetchAllTablesStatus}
-                        className="btn-secondary text-sm"
-                        disabled={loading}
-                    >
-                        {loading ? 'Refreshing...' : 'Refresh'}
-                    </button>
-                </div>
+
+                {/*<div className="mb-6 flex justify-between items-center">*/}
+                {/*    <div className="flex gap-4">*/}
+                {/*        <div className="flex items-center gap-2">*/}
+                {/*            <div className="w-4 h-4 rounded bg-gradient-to-br from-green-100 to-green-200 border-2 border-green-400"></div>*/}
+                {/*            <span className="text-sm text-gray-700 dark:text-gray-300">Available</span>*/}
+                {/*        </div>*/}
+                {/*        <div className="flex items-center gap-2">*/}
+                {/*            <div className="w-4 h-4 rounded bg-gradient-to-br from-yellow-100 to-yellow-200 border-2 border-yellow-400"></div>*/}
+                {/*            <span className="text-sm text-gray-700 dark:text-gray-300">In Progress</span>*/}
+                {/*        </div>*/}
+                {/*    </div>*/}
+                {/*    <button*/}
+                {/*        onClick={fetchAllTablesStatus}*/}
+                {/*        className="btn-secondary text-sm"*/}
+                {/*        disabled={loading}*/}
+                {/*    >*/}
+                {/*        {loading ? 'Refreshing...' : 'Refresh'}*/}
+                {/*    </button>*/}
+                {/*</div>*/}
 
                 {loading ? (
                     <div className="text-center py-12">

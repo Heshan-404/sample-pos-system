@@ -176,6 +176,44 @@ class OrderService {
 
         return finish(tableNumber, discount, serviceCharge);
     }
+
+    // Update single order item quantity
+    updateOrderItemQuantity(orderItemId, quantity) {
+        const stmt = db.prepare(`
+            UPDATE order_items
+            SET quantity = ?
+            WHERE id = ?
+        `);
+        stmt.run(quantity, orderItemId);
+        return { success: true, message: 'Order item updated' };
+    }
+
+    // Remove order item
+    removeOrderItem(orderItemId) {
+        const stmt = db.prepare(`
+            DELETE FROM order_items
+            WHERE id = ?
+        `);
+        stmt.run(orderItemId);
+        return { success: true, message: 'Order item removed' };
+    }
+
+    // Bulk update multiple order item quantities
+    updateMultipleOrderItems(items) {
+        const update = db.transaction((items) => {
+            items.forEach(i => {
+                db.prepare(`
+                UPDATE order_items
+                SET quantity = ?
+                WHERE id = ?
+            `).run(i.quantity, i.orderItemId);
+            });
+        });
+
+        update(items);
+        return { success: true };
+    }
+
 }
 
 module.exports = new OrderService();

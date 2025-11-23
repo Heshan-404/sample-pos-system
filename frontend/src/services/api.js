@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://192.168.224.10:5000/api';
 
 const api = axios.create({
     baseURL: API_BASE_URL,
@@ -19,6 +19,8 @@ export const itemsAPI = {
 export const ordersAPI = {
     addItem: (data) => api.post('/orders/add-item', data),
     getTableOrder: (tableNumber) => api.get(`/orders/${tableNumber}`),
+    updateItemQuantity: (orderItemId, quantity) => api.put(`/orders/update-item/${orderItemId}`, { quantity }),
+    removeItem: (orderItemId) => api.delete(`/orders/remove-item/${orderItemId}`),
     finishOrder: (data) => api.post('/orders/finish', data),
 };
 
