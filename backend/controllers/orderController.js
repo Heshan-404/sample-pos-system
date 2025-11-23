@@ -56,7 +56,7 @@ class OrderController {
     }
 
     // POST /orders/finish - Finish order and generate bill
-    finishOrder(req, res) {
+    async finishOrder(req, res) {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({

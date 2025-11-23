@@ -7,6 +7,7 @@ import BillingPage from './components/BillingPage';
 import HistoryPage from './components/HistoryPage';
 import Layout from './components/layout/Layout';
 import PageTransition from './components/layout/PageTransition';
+import PrinterManagement from './components/PrinterManagement';
 import './index.css';
 
 function App() {
@@ -53,6 +54,14 @@ function App() {
             element={
               <PageTransition>
                 <HistoryPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/printers"
+            element={
+              <PageTransition>
+                <PrinterManagement />
               </PageTransition>
             }
           />
