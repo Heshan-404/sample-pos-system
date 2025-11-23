@@ -54,4 +54,47 @@ function migrateSubcategories() {
     }
 }
 
-module.exports = { migrateSubcategories };
+/**
+ * Migration to add payment method and additional items fields
+ */
+function migratePaymentFields() {
+    console.log('Running payment fields migration...');
+
+    try {
+        const columns = db.prepare(`PRAGMA table_info(orders_history)`).all();
+
+        // Check and add paymentMethod column
+        const hasPaymentMethod = columns.some(col => col.name === 'paymentMethod');
+        if (!hasPaymentMethod) {
+            console.log('Adding paymentMethod column...');
+            db.exec(`
+                ALTER TABLE orders_history 
+                ADD COLUMN paymentMethod TEXT DEFAULT 'CASH' CHECK(paymentMethod IN ('CASH', 'CARD'))
+            `);
+            console.log('✅ paymentMethod column added');
+        } else {
+            console.log('✅ paymentMethod column already exists');
+        }
+
+        // Check and add additionalItems column
+        const hasAdditionalItems = columns.some(col => col.name === 'additionalItems');
+        if (!hasAdditionalItems) {
+            console.log('Adding additionalItems column...');
+            db.exec(`
+                ALTER TABLE orders_history 
+                ADD COLUMN additionalItems TEXT
+            `);
+            console.log('✅ additionalItems column added');
+        } else {
+            console.log('✅ additionalItems column already exists');
+        }
+
+        console.log('✅ Payment fields migration completed successfully');
+
+    } catch (error) {
+        console.error('❌ Error running payment fields migration:', error);
+        throw error;
+    }
+}
+
+module.exports = { migrateSubcategories, migratePaymentFields };

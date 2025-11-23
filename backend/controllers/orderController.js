@@ -66,8 +66,21 @@ class OrderController {
         }
 
         try {
-            const { tableNumber, discount = 0, serviceCharge = false } = req.body;
-            const bill = orderService.finishOrder(tableNumber, discount, serviceCharge);
+            const {
+                tableNumber,
+                discount = 0,
+                serviceCharge = false,
+                paymentMethod = 'CASH',
+                additionalItems = ''
+            } = req.body;
+
+            const bill = orderService.finishOrder(
+                tableNumber,
+                discount,
+                serviceCharge,
+                paymentMethod,
+                additionalItems
+            );
 
             res.json({
                 success: true,

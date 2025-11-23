@@ -34,7 +34,9 @@ class PrintController {
                 serviceCharge: history.serviceCharge === 1,
                 serviceChargeAmount: history.serviceChargeAmount,
                 finalAmount: history.finalAmount,
-                closedAt: history.closed_at
+                closedAt: history.closed_at,
+                paymentMethod: history.paymentMethod || 'CASH',
+                additionalItems: history.additionalItems || ''
             };
 
             // Send print job
@@ -86,7 +88,9 @@ class PrintController {
                 serviceCharge: history.serviceCharge === 1,
                 serviceChargeAmount: history.serviceChargeAmount,
                 finalAmount: history.finalAmount,
-                closedAt: history.closed_at
+                closedAt: history.closed_at,
+                paymentMethod: history.paymentMethod || 'CASH',
+                additionalItems: history.additionalItems || ''
             };
 
             // Generate PDF

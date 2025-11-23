@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ordersAPI, printAPI } from '../services/api';
 import ConfirmModal from './ConfirmModal';
 
 const BillingPage = () => {
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const tableFromUrl = searchParams.get('table');
     const [selectedTable, setSelectedTable] = useState(tableFromUrl ? parseInt(tableFromUrl, 10) : 1);
     const [currentOrder, setCurrentOrder] = useState(null);
     const [loading, setLoading] = useState(false);
     const [discount, setDiscount] = useState(0);
-    const [serviceCharge, setServiceCharge] = useState(false);
+    const [serviceCharge, setServiceCharge] = useState(true); // Default to true
+    const [paymentMethod, setPaymentMethod] = useState('CASH');
+    const [additionalItems, setAdditionalItems] = useState('');
     const [bill, setBill] = useState(null);
     const [showConfirm, setShowConfirm] = useState(false);
     const [printing, setPrinting] = useState(false);
@@ -58,12 +61,16 @@ const BillingPage = () => {
                 tableNumber: selectedTable,
                 discount: parseFloat(discount || 0),
                 serviceCharge: serviceCharge,
+                paymentMethod: paymentMethod,
+                additionalItems: additionalItems,
             });
             if (response.data.success) {
                 setBill(response.data.data);
                 setCurrentOrder(null);
                 setDiscount(0);
-                setServiceCharge(false);
+                setServiceCharge(true);
+                setPaymentMethod('CASH');
+                setAdditionalItems('');
 
                 // Auto-print receipt after finishing bill
                 const historyId = response.data.data.historyId;
@@ -211,7 +218,7 @@ const BillingPage = () => {
                                 {printing ? '📄 Generating...' : '📄 Download PDF'}
                             </button>
                             <button
-                                onClick={() => { setBill(null); fetchTableOrder(); }}
+                                onClick={() => navigate('/tables')}
                                 className="btn-secondary text-lg py-3"
                             >
                                 New Bill
@@ -243,8 +250,48 @@ const BillingPage = () => {
                         </div>
                         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg space-y-4">
                             <h3 className="text-lg font-semibold">Billing Options</h3>
+
+                            {/* Payment Method */}
                             <div>
-                                <label className="block text-sm font-medium mb-2">Discount Amount (LKR )</label>
+                                <label className="block text-sm font-medium mb-2">Payment Method</label>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPaymentMethod('CASH')}
+                                        className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all ${paymentMethod === 'CASH'
+                                                ? 'bg-green-600 text-white shadow-lg'
+                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                            }`}
+                                    >
+                                        💵 Cash
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPaymentMethod('CARD')}
+                                        className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all ${paymentMethod === 'CARD'
+                                                ? 'bg-blue-600 text-white shadow-lg'
+                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                            }`}
+                                    >
+                                        💳 Card
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Additional Items */}
+                            <div>
+                                <label className="block text-sm font-medium mb-2">Additional Items (Optional)</label>
+                                <input
+                                    type="text"
+                                    className="input-field"
+                                    value={additionalItems}
+                                    onChange={(e) => setAdditionalItems(e.target.value)}
+                                    placeholder="e.g., Extra napkins, spoon, takeaway box"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-2">Discount Amount (LKR)</label>
                                 <input type="number" min="0" step="0.01" className="input-field" value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0.00" />
                             </div>
                             <div className="flex items-center">
