@@ -298,6 +298,11 @@ const PrinterManagement = () => {
                         <li>• Default port for most ESC/POS printers is 9100</li>
                         <li>• The print server must be running to print receipts</li>
                         <li>• Receipts will automatically print when bills are finalized</li>
+                        <br/>
+                        Default Print Credential
+                        <li>• ip: 192.168.224.61 </li>
+                        <li>•  port : 9100 </li>
+                        <li>• name : default printer</li>
                     </ul>
                 </div>
             </div>

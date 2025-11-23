@@ -102,12 +102,15 @@ const insertSampleData = () => {
   `);
 
   const sampleSubcategories = [
-    ['Soft Drinks', 'BOT'],
-    ['Juices', 'BOT'],
-    ['Burgers', 'KOT'],
-    ['Sides', 'KOT'],
-    ['Pizzas', 'KOT'],
-    ['Main Course', 'KOT'],
+    ['Starters', 'KOT'],
+    ['Mains', 'KOT'],
+    ['Desserts', 'KOT'],
+    ['Drinks', 'KOT'],
+    ['Shots', 'BOT'],
+    ['Wine', 'BOT'],
+    ['Soft Drink', 'BOT'],
+    ['Cocktails', 'BOT'],
+    ['Beers', 'BOT'],
   ];
 
   const insertSubcategories = db.transaction((subcats) => {
@@ -124,12 +127,15 @@ const insertSampleData = () => {
     return db.prepare('SELECT id FROM subcategories WHERE name = ?').get(name).id;
   };
 
-  const softDrinksId = getSubcatId('Soft Drinks');
-  const juicesId = getSubcatId('Juices');
-  const burgersId = getSubcatId('Burgers');
-  const sidesId = getSubcatId('Sides');
-  const pizzasId = getSubcatId('Pizzas');
-  const mainCourseId = getSubcatId('Main Course');
+  const startersId = getSubcatId('Starters');
+  const mainsId = getSubcatId('Mains');
+  const dessertsId = getSubcatId('Desserts');
+  const drinksId = getSubcatId('Drinks');
+  const shortsId = getSubcatId('Shots');
+  const wineId = getSubcatId('Wine');
+  const softDrinksId = getSubcatId('Soft Drink');
+  const cocktailsId = getSubcatId('Cocktails');
+  const beersId = getSubcatId('Beers');
 
   // Now insert items with subcategories
   const itemsStmt = db.prepare(`
@@ -137,28 +143,80 @@ const insertSampleData = () => {
   `);
 
   const sampleItems = [
-    // BOT Items (Beverages)
-    ['Coca Cola', 2.50, 'BOT', softDrinksId],
-    ['Pepsi', 2.50, 'BOT', softDrinksId],
-    ['Sprite', 2.50, 'BOT', softDrinksId],
-    ['Water Bottle', 1.00, 'BOT', softDrinksId],
-    ['Orange Juice', 3.50, 'BOT', juicesId],
-    ['Lemonade', 3.00, 'BOT', juicesId],
+    // 🔥 SHOTS (BOT)
+    ['Arrack', 1500, 'BOT', shortsId],
+    ['Red Rum', 1800, 'BOT', shortsId],
+    ['White Rum', 1800, 'BOT', shortsId],
+    ['Vodka', 2000, 'BOT', shortsId],
+    ['Gin', 2000, 'BOT', shortsId],
+    ['VAT 69', 2800, 'BOT', shortsId],
+    ['Tequila', 3000, 'BOT', shortsId],
 
-    // KOT Items (Kitchen Orders)
-    ['Chicken Burger', 8.99, 'KOT', burgersId],
-    ['Beef Burger', 9.99, 'KOT', burgersId],
-    ['Veggie Burger', 7.99, 'KOT', burgersId],
-    ['French Fries', 3.99, 'KOT', sidesId],
-    ['Onion Rings', 4.99, 'KOT', sidesId],
-    ['Caesar Salad', 6.99, 'KOT', sidesId],
-    ['Margherita Pizza', 12.99, 'KOT', pizzasId],
-    ['Pepperoni Pizza', 14.99, 'KOT', pizzasId],
-    ['Grilled Chicken', 11.99, 'KOT', mainCourseId],
-    ['Fish and Chips', 13.99, 'KOT', mainCourseId],
-    ['Spaghetti Carbonara', 10.99, 'KOT', mainCourseId],
-    ['Chicken Wings', 8.99, 'KOT', mainCourseId],
+    // 🍷 WINE (BOT)
+    ['Red Wine Glass', 3000, 'BOT', wineId],
+    ['White Wine Glass', 3000, 'BOT', wineId],
+
+    // 🥤 SOFT DRINKS (BOT)
+    ['Coca Cola', 500, 'BOT', softDrinksId],
+    ['Coca Cola Zero', 600, 'BOT', softDrinksId],
+    ['Sprite', 500, 'BOT', softDrinksId],
+    ['Ginger Beer', 500, 'BOT', softDrinksId],
+    ['Soda', 500, 'BOT', softDrinksId],
+    ['Redbull', 2000, 'BOT', softDrinksId],
+    ['Water Bottle', 300, 'BOT', softDrinksId],
+    ['Water Bottle Large', 500, 'BOT', softDrinksId],
+
+    // 🍹 COCKTAILS (BOT)
+    ['Jungle Kasiya', 3800, 'BOT', cocktailsId],
+    ['Coconut Kurumbatti', 3200, 'BOT', cocktailsId],
+    ['Green Robana', 2400, 'BOT', cocktailsId],
+    ['Tropical Nirvana', 2500, 'BOT', cocktailsId],
+    ['Honey Heaven', 3000, 'BOT', cocktailsId],
+    ['Karapincha', 2500, 'BOT', cocktailsId],
+
+    // 🍺 BEERS (BOT)
+    ['Lion Lager', 800, 'BOT', beersId],
+    ['Lion Ice', 1000, 'BOT', beersId],
+    ['Somersby Apple', 1100, 'BOT', beersId],
+    ['Somersby Blackberry', 1100, 'BOT', beersId],
+    ['Somersby Mango', 1100, 'BOT', beersId],
+
+    // ⭐ STARTERS (KOT)
+    ['French Fries', 1000, 'KOT', startersId],
+    ['Garlic Bread', 1000, 'KOT', startersId],
+    ['Bruschetta', 1000, 'KOT', startersId],
+
+    // 🍛 MAINS (KOT)
+    ['Jackfruit Burger', 1600, 'KOT', mainsId],
+    ['Eggplant Taco', 2000, 'KOT', mainsId],
+    ['Chicken Taco', 2000, 'KOT', mainsId],
+    ['Beef Taco / Burger', 2500, 'KOT', mainsId],
+    ['Seafood Spaghetti', 2000, 'KOT', mainsId],
+    ['Robana Kiri Malu Curry', 1800, 'KOT', mainsId],
+    ['Roti Kottu', 2000, 'KOT', mainsId],
+
+    // 🍰 DESSERTS (KOT)
+    ['Chocolate Pancake', 1000, 'KOT', dessertsId],
+    ['Chocolate Banana Pancake', 1000, 'KOT', dessertsId],
+    ['Fried Banana', 1000, 'KOT', dessertsId],
+
+    // 🥤 DRINKS (KOT)
+    ['Watermelon Juice', 800, 'KOT', drinksId],
+    ['Papaya Juice', 800, 'KOT', drinksId],
+    ['Lemon Tea', 1000, 'KOT', drinksId],
+    ['Ginger Tea', 1000, 'KOT', drinksId],
+    ['Virgin Mojito', 1000, 'KOT', drinksId],
+    ['Virgin Passion Mojito', 1200, 'KOT', drinksId],
+    ['Pineapple Juice', 1500, 'KOT', drinksId],
+    ['Ginger Juice', 1500, 'KOT', drinksId],
+    ['Papaya Lassi', 1000, 'KOT', drinksId],
+    ['Banana Lassi', 1000, 'KOT', drinksId],
+    ['Chocolate Milkshake', 1200, 'KOT', drinksId],
+    ['Vanilla Milkshake', 1200, 'KOT', drinksId],
+    ['Strawberry Milkshake', 1200, 'KOT', drinksId],
+    ['Iced Robana', 1000, 'KOT', drinksId],
   ];
+
 
   const insertMany = db.transaction((items) => {
     for (const item of items) {
