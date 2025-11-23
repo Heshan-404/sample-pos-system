@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ordersAPI } from '../services/api';
+import { ordersAPI, printAPI } from '../services/api';
 import ConfirmModal from './ConfirmModal';
 
 const BillingPage = () => {
@@ -13,6 +13,7 @@ const BillingPage = () => {
     const [serviceCharge, setServiceCharge] = useState(false);
     const [bill, setBill] = useState(null);
     const [showConfirm, setShowConfirm] = useState(false);
+    const [printing, setPrinting] = useState(false);
 
     const tableNumbers = Array.from({ length: 30 }, (_, i) => i + 1);
 
@@ -70,6 +71,55 @@ const BillingPage = () => {
         } finally {
             setLoading(false);
             setShowConfirm(false);
+        }
+    };
+
+    const handlePrintReceipt = async () => {
+        if (!bill || !bill.historyId) {
+            alert('No bill to print');
+            return;
+        }
+
+        setPrinting(true);
+        try {
+            const response = await printAPI.printReceipt(bill.historyId);
+            if (response.data.success) {
+                alert('Receipt sent to printer!');
+            }
+        } catch (error) {
+            console.error('Error printing receipt:', error);
+            alert(error.response?.data?.error || 'Failed to print receipt');
+        } finally {
+            setPrinting(false);
+        }
+    };
+
+    const handleDownloadPDF = async () => {
+        if (!bill || !bill.historyId) {
+            alert('No bill to download');
+            return;
+        }
+
+        setPrinting(true);
+        try {
+            const response = await printAPI.downloadPDF(bill.historyId);
+
+            // Create a download link
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `receipt-table-${bill.tableNumber}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+
+            alert('PDF downloaded successfully!');
+        } catch (error) {
+            console.error('Error downloading PDF:', error);
+            alert('Failed to download PDF');
+        } finally {
+            setPrinting(false);
         }
     };
 
@@ -132,9 +182,28 @@ const BillingPage = () => {
                                 </div>
                             </div>
                         </div>
-                        <button onClick={() => { setBill(null); fetchTableOrder(); }} className="btn-primary w-full mt-6">
-                            New Bill
-                        </button>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6">
+                            <button
+                                onClick={handlePrintReceipt}
+                                className="btn-primary text-lg py-3"
+                                disabled={printing}
+                            >
+                                {printing ? '🖨️ Printing...' : '🖨️ Print Receipt'}
+                            </button>
+                            <button
+                                onClick={handleDownloadPDF}
+                                className="btn-success text-lg py-3"
+                                disabled={printing}
+                            >
+                                {printing ? '📄 Generating...' : '📄 Download PDF'}
+                            </button>
+                            <button
+                                onClick={() => { setBill(null); fetchTableOrder(); }}
+                                className="btn-secondary text-lg py-3"
+                            >
+                                New Bill
+                            </button>
+                        </div>
                     </div>
                 ) : loading ? (
                     <div className="card text-center py-12">

@@ -1,0 +1,15 @@
+{
+    "name": "local-print-server",
+    "version": "1.0.0",
+    "description": "Local print server for LAN printer communication",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js"
+    },
+    "dependencies": {
+        "chalk": "^4.1.2",
+        "image-to-slices": "^0.1.3",
+        "pdf-to-img": "^5.0.0",
+        "socket.io-client": "^4.6.1"
+    }
+}

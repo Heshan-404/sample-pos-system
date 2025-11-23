@@ -1,11 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Package, Grid3x3, Receipt, History } from 'lucide-react';
+import { Package, Grid3x3, Receipt, History, Printer } from 'lucide-react';
 
 const navItems = [
     { path: '/', label: 'Items', icon: Package },
     { path: '/tables', label: 'Tables', icon: Grid3x3 },
-    // { path: '/billing', label: 'Billing', icon: Receipt },
     { path: '/history', label: 'History', icon: History },
+    { path: '/printers', label: 'Printers', icon: Printer },
 ];
 
 export default function BottomNav() {

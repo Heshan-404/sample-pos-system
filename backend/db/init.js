@@ -66,6 +66,18 @@ const createTables = () => {
     )
   `);
 
+  // Printers table - stores registered printers
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS printers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      ip TEXT NOT NULL,
+      port INTEGER NOT NULL,
+      isActive BOOLEAN DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   console.log('✅ Database tables created successfully');
 };
 

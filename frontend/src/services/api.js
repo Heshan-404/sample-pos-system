@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://192.168.224.10:5000/api';
+const API_BASE_URL = 'http://192.168.224.97:5000/api';
 
 const api = axios.create({
     baseURL: API_BASE_URL,
@@ -29,6 +29,12 @@ export const historyAPI = {
     getAll: () => api.get('/history'),
     getByTable: (tableNumber) => api.get(`/history/table/${tableNumber}`),
     getById: (id) => api.get(`/history/${id}`),
+};
+
+// Print API
+export const printAPI = {
+    printReceipt: (historyId) => api.post(`/print/receipt/${historyId}`),
+    downloadPDF: (historyId) => api.get(`/print/pdf/${historyId}`, { responseType: 'blob' }),
 };
 
 export default api;
