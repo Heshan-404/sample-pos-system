@@ -9,7 +9,6 @@ console.log(`Testing printer at ${PRINTER_IP}:${PRINTER_PORT}...`);
 const client = new net.Socket();
 
 client.connect(PRINTER_PORT, PRINTER_IP, () => {
-    console.log('✅ Connected to printer!');
 
     // Simple test print
     const testContent = '\n\nTEST PRINT\nFrom Restaurant POS\n\n\n';
@@ -21,7 +20,7 @@ client.connect(PRINTER_PORT, PRINTER_IP, () => {
         Buffer.from([0x1D, 0x56, 0x00])   // Cut paper
     ]);
 
-    console.log(`Sending ${buffer.length} bytes...`);
+    // console.log(`Sending ${buffer.length} bytes...`);
     client.write(buffer);
 
     setTimeout(() => {

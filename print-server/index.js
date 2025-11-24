@@ -30,18 +30,18 @@ socket.on('connect', () => {
 });
 
 socket.on('disconnect', () => {
-    console.log(chalk.yellow('⚠️  Disconnected from cloud backend'));
+    // console.log(chalk.yellow('⚠️  Disconnected from cloud backend'));
 });
 
 socket.on('connect_error', (error) => {
-    console.log(chalk.red('❌ Connection error:'), error.message);
+    // console.log(chalk.red('❌ Connection error:'), error.message);
 });
 
 socket.on('print-job', (data) => {
-    console.log(chalk.blue('\n📨 Received print job:'));
-    console.log(chalk.gray('  Job ID:'), data.jobId);
-    console.log(chalk.gray('  Printer:'), data.printer.name);
-    console.log(chalk.gray('  IP:PORT:'), `${data.printer.ip}:${data.printer.port}`);
+    // console.log(chalk.blue('\n📨 Received print job:'));
+    // console.log(chalk.gray('  Job ID:'), data.jobId);
+    // console.log(chalk.gray('  Printer:'), data.printer.name);
+    // console.log(chalk.gray('  IP:PORT:'), `${data.printer.ip}:${data.printer.port}`);
 
     // Add to queue and process
     printQueue.push(data);
@@ -64,7 +64,7 @@ async function printToDevice(printer, content, jobId) {
         }, 5000);
 
         client.connect(printer.port, printer.ip, () => {
-            console.log(chalk.green(`✅ Connected to printer ${printer.name}`));
+            // console.log(chalk.green(`✅ Connected to printer ${printer.name}`));
 
             // Build print buffer with ESC/POS commands
             const buffer = Buffer.concat([
@@ -82,10 +82,10 @@ async function printToDevice(printer, content, jobId) {
                 Buffer.from([0x1D, 0x56, 0x00])               // GS V 0 - Full cut
             ]);
 
-            console.log(chalk.cyan(`📝 Sending ${buffer.length} bytes to printer`));
-            console.log(chalk.gray('=== RECEIPT CONTENT START ==='));
-            console.log(content);
-            console.log(chalk.gray('=== RECEIPT CONTENT END ==='));
+            // console.log(chalk.cyan(`📝 Sending ${buffer.length} bytes to printer`));
+            // console.log(chalk.gray('=== RECEIPT CONTENT START ==='));
+            // console.log(content);
+            // console.log(chalk.gray('=== RECEIPT CONTENT END ==='));
 
             // Send print data
             client.write(buffer);
@@ -96,7 +96,7 @@ async function printToDevice(printer, content, jobId) {
             if (!hasResponded) {
                 clearTimeout(timeout);
                 hasResponded = true;
-                console.log(chalk.green(`✅ Print job completed: ${jobId}`));
+                // console.log(chalk.green(`✅ Print job completed: ${jobId}`));
                 resolve();
             }
         });
@@ -105,7 +105,7 @@ async function printToDevice(printer, content, jobId) {
             if (!hasResponded) {
                 clearTimeout(timeout);
                 hasResponded = true;
-                console.log(chalk.red(`❌ Print error: ${err.message}`));
+                // console.log(chalk.red(`❌ Print error: ${err.message}`));
                 reject(err);
             }
         });
@@ -135,7 +135,7 @@ async function processQueue() {
             });
 
         } catch (error) {
-            console.log(chalk.yellow(`⚠️  Print failed, will retry...`));
+            // console.log(chalk.yellow(`⚠️  Print failed, will retry...`));
 
             // Add back to queue for retry (max 3 attempts)
             job.attempts = (job.attempts || 0) + 1;
@@ -143,7 +143,7 @@ async function processQueue() {
             if (job.attempts < 3) {
                 printQueue.push(job);
             } else {
-                console.log(chalk.red(`❌ Print job failed after 3 attempts: ${job.jobId}`));
+                // console.log(chalk.red(`❌ Print job failed after 3 attempts: ${job.jobId}`));
 
                 socket.emit('print-status', {
                     jobId: job.jobId,

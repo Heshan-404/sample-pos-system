@@ -304,7 +304,6 @@ async function sendPrintJob(app, billData) {
                 content: receiptContent
             };
 
-            console.log('📄 Sending print job:', jobId);
 
             // Send to print server
             printServerSocket.emit('print-job', printJob);

@@ -30,7 +30,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Request logging
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    // console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
     next();
 });
 
@@ -55,7 +55,6 @@ const frontendDistPath = path.join(__dirname, '../frontend/dist');
 
 // Check if dist folder exists
 if (fs.existsSync(frontendDistPath)) {
-    console.log('📦 Serving frontend from:', frontendDistPath);
     app.use(express.static(frontendDistPath));
 
     // Serve index.html for all non-API routes (SPA support)
@@ -63,7 +62,6 @@ if (fs.existsSync(frontendDistPath)) {
         res.sendFile(path.join(frontendDistPath, 'index.html'));
     });
 } else {
-    console.log('⚠️  Frontend build not found. Run: npm run build in frontend folder');
 
     // 404 handler for missing frontend
     app.use((req, res) => {
@@ -83,7 +81,6 @@ if (fs.existsSync(frontendDistPath)) {
 
 // Error handler
 app.use((err, req, res, next) => {
-    console.error('Error:', err);
     res.status(500).json({
         success: false,
         error: 'Internal server error',
@@ -95,27 +92,22 @@ app.use((err, req, res, next) => {
 let printServerSocket = null;
 
 io.on('connection', (socket) => {
-    console.log('📱 Client connected:', socket.id);
 
     // Print server registration
     socket.on('register', (data) => {
         printServerSocket = socket;
-        console.log('🖨️  Print server registered:', data.name);
         socket.emit('registered', { success: true });
     });
 
     // Print status updates
     socket.on('print-status', (data) => {
-        console.log('📄 Print status update:', data);
         // You can broadcast this to connected clients if needed
         io.emit('print-status-update', data);
     });
 
     socket.on('disconnect', () => {
-        console.log('📱 Client disconnected:', socket.id);
         if (socket === printServerSocket) {
             printServerSocket = null;
-            console.log('🖨️  Print server disconnected');
         }
     });
 });

@@ -91,7 +91,7 @@ const createTables = () => {
     )
   `);
 
-  console.log('✅ Database tables created successfully');
+  // console.log('✅ Database tables created successfully');
 };
 
 // Insert sample data
@@ -120,7 +120,6 @@ const insertSampleData = () => {
   });
 
   insertSubcategories(sampleSubcategories);
-  console.log('✅ Sample subcategories inserted');
 
   // Get subcategory IDs
   const getSubcatId = (name) => {
@@ -225,7 +224,6 @@ const insertSampleData = () => {
   });
 
   insertMany(sampleItems);
-  console.log('✅ Sample items inserted successfully');
 };
 
 // Initialize database
@@ -242,10 +240,8 @@ try {
   if (count.count === 0) {
     insertSampleData();
   } else {
-    console.log('ℹ️  Database already contains data, skipping sample data insertion');
   }
 
-  console.log('🎉 Database initialization complete!');
 } catch (error) {
   console.error('❌ Database initialization failed:', error);
   process.exit(1);
