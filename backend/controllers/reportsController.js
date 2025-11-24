@@ -31,22 +31,34 @@ exports.generateOrdersReport = async (req, res) => {
         // Generate CSV content
         let csvContent = '';
 
-        // Summary section
         const totalOrders = orders.length;
         const totalRevenue = orders.reduce((sum, o) => sum + o.finalAmount, 0);
         const avgOrderValue = totalOrders > 0 ? (totalRevenue / totalOrders) : 0;
 
+        // Calculate KOT & BOT totals
+        let kotTotal = 0;
+        let botTotal = 0;
+
+        ordersWithItems.forEach(order => {
+            order.items.forEach(item => {
+                if (item.itemCategory === "KOT") kotTotal += item.subtotal;
+                if (item.itemCategory === "BOT") botTotal += item.subtotal;
+            });
+        });
+
         csvContent += 'Orders Report\n';
-        csvContent += `Period:,${startDate},to,${endDate}\n`;
-        csvContent += '\n';
+        csvContent += `Period:,${startDate},to,${endDate}\n\n`;
         csvContent += 'Summary\n';
         csvContent += `Total Orders:,${totalOrders}\n`;
         csvContent += `Total Revenue:,${totalRevenue.toFixed(2)}\n`;
         csvContent += `Average Order Value:,${avgOrderValue.toFixed(2)}\n`;
+        csvContent += `KOT Total:,${kotTotal.toFixed(2)}\n`;
+        csvContent += `BOT Total:,${botTotal.toFixed(2)}\n`;
         csvContent += '\n\n';
 
         // Orders Details Header
-        csvContent += 'Order ID,Table Number,Date,Time,Item Name,Quantity,Unit Price,Item Total,Subtotal,Service Charge,Discount,Total Amount\n';
+        csvContent += 'Order ID,Table Number,Date,Time,Item Name,Category,Quantity,Unit Price,Item Total,Subtotal,Service Charge,Discount,Total Amount\n';
+
 
         // Orders data
         ordersWithItems.forEach(order => {
@@ -55,15 +67,18 @@ exports.generateOrdersReport = async (req, res) => {
             const timeStr = orderDate.toLocaleTimeString();
 
             if (order.items.length === 0) {
-                csvContent += `${order.id},${order.tableNumber},${dateStr},${timeStr},,,,,${order.subtotal.toFixed(2)},${order.serviceChargeAmount.toFixed(2)},${order.discount.toFixed(2)},${order.finalAmount.toFixed(2)}\n`;
+                csvContent += `${order.id},${order.tableNumber},${dateStr},${timeStr},"${item.itemName}",${item.itemCategory},${item.quantity},${item.itemPrice.toFixed(2)},${item.subtotal.toFixed(2)},${order.subtotal.toFixed(2)},${order.serviceChargeAmount.toFixed(2)},${order.discount.toFixed(2)},${order.finalAmount.toFixed(2)}\n`;
+
             } else {
                 order.items.forEach((item, index) => {
                     if (index === 0) {
                         // First item includes order totals
-                        csvContent += `${order.id},${order.tableNumber},${dateStr},${timeStr},"${item.itemName}",${item.quantity},${item.itemPrice.toFixed(2)},${item.subtotal.toFixed(2)},${order.subtotal.toFixed(2)},${order.serviceChargeAmount.toFixed(2)},${order.discount.toFixed(2)},${order.finalAmount.toFixed(2)}\n`;
+                        csvContent += `${order.id},${order.tableNumber},${dateStr},${timeStr},"${item.itemName}",${item.itemCategory},${item.quantity},${item.itemPrice.toFixed(2)},${item.subtotal.toFixed(2)},${order.subtotal.toFixed(2)},${order.serviceChargeAmount.toFixed(2)},${order.discount.toFixed(2)},${order.finalAmount.toFixed(2)}\n`;
+
                     } else {
                         // Subsequent items only show item details
-                        csvContent += `,,,,${item.itemName},${item.quantity},${item.itemPrice.toFixed(2)},${item.subtotal.toFixed(2)},,,,\n`;
+                        csvContent += `,,,,${item.itemName},${item.itemCategory},${item.quantity},${item.itemPrice.toFixed(2)},${item.subtotal.toFixed(2)},,,,\n`;
+
                     }
                 });
             }

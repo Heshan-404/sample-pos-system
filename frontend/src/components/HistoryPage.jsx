@@ -193,7 +193,7 @@ const HistoryPage = () => {
                                             <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">#{bill.orderId}</td>
                                             <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Table {bill.tableNumber}</td>
                                             <td className="px-4 py-3 text-sm font-semibold text-green-600 dark:text-green-400">
-                                                ${bill.finalAmount.toFixed(2)}
+                                                LKR {bill.finalAmount.toFixed(2)}
                                             </td>
                                             <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                                                 {new Date(bill.closed_at).toLocaleString()}
@@ -251,12 +251,12 @@ const HistoryPage = () => {
                                             <div>
                                                 <p className="font-medium text-gray-800 dark:text-gray-200">{item.itemName}</p>
                                                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                    ${item.itemPrice.toFixed(2)} × {item.quantity}
+                                                    LKR {item.itemPrice.toFixed(2)} × {item.quantity}
                                                 </p>
                                             </div>
                                             <div className="text-right">
                                                 <p className="font-bold text-gray-800 dark:text-gray-200">
-                                                    ${item.subtotal.toFixed(2)}
+                                                    LKR {item.subtotal.toFixed(2)}
                                                 </p>
                                                 <span className={`text-xs px-2 py-1 rounded-full ${item.itemCategory === 'KOT'
                                                     ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
@@ -275,7 +275,7 @@ const HistoryPage = () => {
                                 <div className="flex justify-between text-lg">
                                     <span className="text-gray-700 dark:text-gray-300">Subtotal:</span>
                                     <span className="font-semibold text-gray-800 dark:text-gray-200">
-                                        ${selectedBill.subtotal.toFixed(2)}
+                                        LKR {selectedBill.subtotal.toFixed(2)}
                                     </span>
                                 </div>
 
@@ -283,7 +283,7 @@ const HistoryPage = () => {
                                     <div className="flex justify-between text-lg">
                                         <span className="text-gray-700 dark:text-gray-300">Service Charge (10%):</span>
                                         <span className="font-semibold text-green-600 dark:text-green-400">
-                                            +${selectedBill.serviceChargeAmount.toFixed(2)}
+                                            +LKR {selectedBill.serviceChargeAmount.toFixed(2)}
                                         </span>
                                     </div>
                                 )}
@@ -292,7 +292,7 @@ const HistoryPage = () => {
                                     <div className="flex justify-between text-lg">
                                         <span className="text-gray-700 dark:text-gray-300">Discount:</span>
                                         <span className="font-semibold text-red-600 dark:text-red-400">
-                                            -${selectedBill.discount.toFixed(2)}
+                                            -LKR {selectedBill.discount.toFixed(2)}
                                         </span>
                                     </div>
                                 )}
@@ -300,7 +300,7 @@ const HistoryPage = () => {
                                 <div className="border-t-2 border-gray-300 dark:border-gray-600 pt-2 flex justify-between text-2xl font-bold">
                                     <span className="text-gray-800 dark:text-gray-200">Total:</span>
                                     <span className="text-green-600 dark:text-green-400">
-                                        ${selectedBill.finalAmount.toFixed(2)}
+                                        LKR {selectedBill.finalAmount.toFixed(2)}
                                     </span>
                                 </div>
 
