@@ -21,6 +21,7 @@ const createTables = () => {
       price REAL NOT NULL,
       category TEXT NOT NULL CHECK(category IN ('BOT', 'KOT')),
       subcategoryId INTEGER NOT NULL,
+      isActive BOOLEAN DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (subcategoryId) REFERENCES subcategories(id) ON DELETE RESTRICT
     )

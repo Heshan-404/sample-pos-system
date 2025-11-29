@@ -118,6 +118,20 @@ const ItemManagement = () => {
         }
     };
 
+    const handleToggleStatus = async (id) => {
+        try {
+            const response = await itemsAPI.toggleStatus(id);
+            if (response.data.success) {
+                setItems(items.map(item =>
+                    item.id === id ? { ...item, isActive: !item.isActive } : item
+                ));
+            }
+        } catch (error) {
+            console.error('Error toggling item status:', error);
+            alert('Failed to update item status');
+        }
+    };
+
     // CLIENT-SIDE FILTERING
     const filteredItems = items.filter((item) => {
         const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -280,6 +294,7 @@ const ItemManagement = () => {
                                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Price</th>
                                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Category</th>
                                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Subcategory</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -306,6 +321,18 @@ const ItemManagement = () => {
                                                 ) : (
                                                     <span className="text-gray-400 italic text-xs">None</span>
                                                 )}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <button
+                                                    onClick={() => handleToggleStatus(item.id)}
+                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${item.isActive ? 'bg-green-500' : 'bg-gray-200'
+                                                        }`}
+                                                >
+                                                    <span
+                                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${item.isActive ? 'translate-x-6' : 'translate-x-1'
+                                                            }`}
+                                                    />
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}

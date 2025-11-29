@@ -27,5 +27,6 @@ const createItemValidation = [
 // Routes
 router.get('/', itemController.getAllItems.bind(itemController));
 router.post('/', createItemValidation, itemController.createItem.bind(itemController));
+router.put('/:id/toggle', itemController.toggleItemStatus.bind(itemController));
 
 module.exports = router;

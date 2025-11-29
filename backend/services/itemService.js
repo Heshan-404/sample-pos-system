@@ -42,6 +42,20 @@ class ItemService {
         const stmt = db.prepare('SELECT * FROM items WHERE id = ?');
         return stmt.get(id);
     }
+
+    // Toggle item status
+    toggleItemStatus(id) {
+        const item = this.getItemById(id);
+        if (!item) {
+            throw new Error('Item not found');
+        }
+
+        const newStatus = item.isActive ? 0 : 1;
+        const stmt = db.prepare('UPDATE items SET isActive = ? WHERE id = ?');
+        stmt.run(newStatus, id);
+
+        return { ...item, isActive: newStatus };
+    }
 }
 
 module.exports = new ItemService();

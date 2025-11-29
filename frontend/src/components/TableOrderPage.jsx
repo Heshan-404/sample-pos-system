@@ -150,7 +150,10 @@ const TableOrderPage = () => {
 
     // Filter items by category and optionally by subcategory
     const filteredItems = useMemo(() => {
-        let filtered = items.filter((i) => (i.category || '').toUpperCase() === (activeTab || '').toUpperCase());
+        let filtered = items.filter((i) =>
+            (i.category || '').toUpperCase() === (activeTab || '').toUpperCase() &&
+            i.isActive !== 0 // Filter out inactive items
+        );
 
         // If a subcategory is selected, filter further
         if (activeSubcategory !== null) {
@@ -612,33 +615,34 @@ const TableOrderPage = () => {
                                     <span>LKR {fmt(editableOrderTotal)}</span>
                                 </div>
 
-                                {user && (user.role === 'admin' || user.role === 'cashier') ? (
-                                    <button onClick={() => navigate(`/billing?table=${tableNumber}`)} className="w-full py-3 rounded-lg mt-4 bg-green-600 hover:bg-green-700 text-white font-bold shadow-lg transform active:scale-95 transition-all">
-                                        Go To Billing
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={async () => {
-                                            try {
-                                                const response = await fetch(`http://localhost:5000/api/print/draft-bill/${tableNumber}`);
-                                                const blob = await response.blob();
-                                                const url = window.URL.createObjectURL(blob);
-                                                const link = document.createElement('a');
-                                                link.href = url;
-                                                link.download = `draft-bill-table-${tableNumber}.pdf`;
-                                                document.body.appendChild(link);
-                                                link.click();
-                                                link.remove();
-                                                window.URL.revokeObjectURL(url);
-                                            } catch (error) {
-                                                alert('Failed to generate draft bill');
-                                            }
-                                        }}
-                                        className="w-full py-3 rounded-lg mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                        Get Draft Bill
-                                    </button>
+                                {user && (user.role === 'admin' || user.role === 'cashier') && (
+                                    <div className="space-y-3 mt-4">
+                                        <button onClick={() => navigate(`/billing?table=${tableNumber}`)} className="w-full py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold shadow-lg transform active:scale-95 transition-all">
+                                            Go To Billing
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    const response = await fetch(`http://localhost:5000/api/print/draft-bill/${tableNumber}`);
+                                                    const blob = await response.blob();
+                                                    const url = window.URL.createObjectURL(blob);
+                                                    const link = document.createElement('a');
+                                                    link.href = url;
+                                                    link.download = `draft-bill-table-${tableNumber}.pdf`;
+                                                    document.body.appendChild(link);
+                                                    link.click();
+                                                    link.remove();
+                                                    window.URL.revokeObjectURL(url);
+                                                } catch (error) {
+                                                    alert('Failed to generate draft bill');
+                                                }
+                                            }}
+                                            className="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                            Get Draft Bill
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </>

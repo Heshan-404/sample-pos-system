@@ -42,7 +42,8 @@ export const itemsAPI = {
     getAll: () => api.get('/items'),
     create: (item) => api.post('/items', item),
     update: (id, item) => api.put(`/items/${id}`, item),
-    delete: (id) => api.delete(`/items/${id}`)
+    delete: (id) => api.delete(`/items/${id}`),
+    toggleStatus: (id) => api.put(`/items/${id}/toggle`)
 };
 
 // Subcategories API

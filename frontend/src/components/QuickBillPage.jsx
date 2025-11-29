@@ -61,7 +61,10 @@ const QuickBillPage = () => {
 
     // Filter items by category and optionally by subcategory
     const filteredItems = useMemo(() => {
-        let filtered = items.filter((i) => (i.category || '').toUpperCase() === (activeTab || '').toUpperCase());
+        let filtered = items.filter((i) =>
+            (i.category || '').toUpperCase() === (activeTab || '').toUpperCase() &&
+            i.isActive !== 0 // Filter out inactive items
+        );
 
         // If a subcategory is selected, filter further
         if (activeSubcategory !== null) {
@@ -485,8 +488,8 @@ const QuickBillPage = () => {
                                                             type="button"
                                                             onClick={() => setPaymentMethod('CASH')}
                                                             className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${paymentMethod === 'CASH'
-                                                                    ? 'bg-green-600 text-white shadow-lg'
-                                                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                                                                ? 'bg-green-600 text-white shadow-lg'
+                                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                                                                 }`}
                                                         >
                                                             💵 Cash
@@ -495,8 +498,8 @@ const QuickBillPage = () => {
                                                             type="button"
                                                             onClick={() => setPaymentMethod('CARD')}
                                                             className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${paymentMethod === 'CARD'
-                                                                    ? 'bg-blue-600 text-white shadow-lg'
-                                                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                                                                ? 'bg-blue-600 text-white shadow-lg'
+                                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                                                                 }`}
                                                         >
                                                             💳 Card

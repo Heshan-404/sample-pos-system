@@ -43,6 +43,24 @@ class ItemController {
             });
         }
     }
+
+    // PUT /items/:id/toggle - Toggle item status
+    toggleItemStatus(req, res) {
+        try {
+            const { id } = req.params;
+            const item = itemService.toggleItemStatus(id);
+
+            res.json({
+                success: true,
+                data: item
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
 }
 
 module.exports = new ItemController();
