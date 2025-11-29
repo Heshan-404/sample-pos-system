@@ -234,8 +234,11 @@ try {
 
   // Run migrations
   const { migrateSubcategories, migratePaymentFields } = require('./migrations');
+  const { migrateUsersTable, seedDefaultUsers } = require('./usersMigration');
+
   migrateSubcategories();
   migratePaymentFields();
+  migrateUsersTable();
 
   // Check if items already exist
   const count = db.prepare('SELECT COUNT(*) as count FROM items').get();
@@ -244,6 +247,9 @@ try {
   } else {
     console.log('ℹ️  Database already contains data, skipping sample data insertion');
   }
+
+  // Seed default users
+  seedDefaultUsers();
 
   console.log('🎉 Database initialization complete!');
 } catch (error) {

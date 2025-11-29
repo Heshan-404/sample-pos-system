@@ -35,12 +35,15 @@ app.use((req, res, next) => {
 });
 
 // API Routes
+app.use('/api/auth', require('./routes/authRoutes'));        // Authentication
+app.use('/api/users', require('./routes/userRoutes'));       // User management
 app.use('/api/items', itemRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/subcategories', require('./routes/subcategoriesRoutes'));
 app.use('/api/printers', printerRoutes);
 app.use('/api/print', printRoutes);
+app.use('/api/kot-bot', require('./routes/kotBotRoutes'));   // KOT/BOT
 app.use('/api/reports', require('./routes/reportsRoutes'));
 
 // Health check

@@ -33,7 +33,7 @@ timeout /t 3 /nobreak >nul
 echo   - Print server started
 
 echo [Step 4/5] Starting Frontend Dev Server...
-start "Frontend Dev Server" cmd /k "cd /d "%SCRIPT_DIR%frontend" && title Frontend Dev Server && npm start"
+start "Frontend Dev Server" cmd /k "cd /d "%SCRIPT_DIR%frontend" && title Frontend Dev Server && npm run preview"
 timeout /t 5 /nobreak >nul
 echo   - Frontend dev started
 

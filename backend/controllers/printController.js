@@ -109,6 +109,76 @@ class PrintController {
             });
         }
     }
+
+    // GET /print/draft-bill/:tableNumber - Get draft bill for current table order
+    async getDraftBill(req, res) {
+        try {
+            const { tableNumber } = req.params;
+
+            // Get current order for this table
+            const order = db.prepare(`
+                SELECT * FROM orders WHERE tableNumber = ?
+            `).get(tableNumber);
+
+            if (!order) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'No active order for this table'
+                });
+            }
+
+            // Get order items
+            const items = db.prepare(`
+                SELECT oi.*, i.name, i.price 
+                FROM order_items oi
+                LEFT JOIN items i ON oi.itemId = i.id
+                WHERE oi.tableNumber = ?
+            `).all(tableNumber);
+
+            if (!items || items.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'No items in order'
+                });
+            }
+
+            // Calculate totals
+            const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const serviceChargeAmount = subtotal * 0.10; // 10% service charge
+            const finalAmount = subtotal + serviceChargeAmount;
+
+            // Prepare draft bill data
+            const draftData = {
+                tableNumber,
+                items: items.map(item => ({
+                    name: item.name,
+                    price: item.price,
+                    quantity: item.quantity
+                })),
+                subtotal,
+                discount: 0,
+                serviceCharge: true,
+                serviceChargeAmount,
+                finalAmount,
+                isDraft: true,
+                closedAt: new Date().toISOString()
+            };
+
+            // Generate PDF
+            const pdfBuffer = await printService.generateReceiptPDF(draftData);
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename=draft-bill-table-${tableNumber}.pdf`);
+            res.send(pdfBuffer);
+
+        } catch (error) {
+            console.error('Draft bill error:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
 }
 
 module.exports = new PrintController();

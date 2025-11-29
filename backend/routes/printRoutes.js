@@ -9,4 +9,7 @@ router.post('/receipt/:historyId', printController.printReceipt.bind(printContro
 // Download PDF receipt
 router.get('/pdf/:historyId', printController.downloadPDF.bind(printController));
 
+// Get draft bill for current table order
+router.get('/draft-bill/:tableNumber', printController.getDraftBill.bind(printController));
+
 module.exports = router;

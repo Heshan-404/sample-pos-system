@@ -1,5 +1,12 @@
-import {Route, Routes, useLocation} from 'react-router-dom';
-import {AnimatePresence} from 'framer-motion';
+import { Route, Routes, useLocation, Navigate } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './components/Login';
+import WaiterLogin from './components/WaiterLogin';
+import Unauthorized from './components/Unauthorized';
+import WaiterDashboard from './components/WaiterDashboard';
+import UserManagement from './components/UserManagement';
 import ItemManagement from './components/ItemManagement';
 import TablesOverview from './components/TablesOverview';
 import TableOrderPage from './components/TableOrderPage';
@@ -15,70 +22,119 @@ function App() {
     const location = useLocation();
 
     return (
-        <Layout>
-            <AnimatePresence mode="wait">
-                <Routes location={location} key={location.pathname}>
-                    <Route
-                        path="/admin/item"
-                        element={
+        <AuthProvider>
+            <Routes location={location}>
+                {/* Public Routes */}
+                <Route path="/unauthorized" element={<Unauthorized />} />
+
+                {/* Public Table Routes */}
+                <Route
+                    path="/tables"
+                    element={
+                        <Layout>
                             <PageTransition>
-                                <ItemManagement/>
+                                <TablesOverview />
                             </PageTransition>
-                        }
-                    />
-                    <Route
-                        path="/tables"
-                        element={
+                        </Layout>
+                    }
+                />
+                <Route
+                    path="/table/:tableNumber"
+                    element={
+                        <Layout>
                             <PageTransition>
-                                <TablesOverview/>
+                                <TableOrderPage />
                             </PageTransition>
-                        }
-                    />
-                    <Route
-                        path="/table/:tableNumber"
-                        element={
-                            <PageTransition>
-                                <TableOrderPage/>
-                            </PageTransition>
-                        }
-                    />
-                    <Route
-                        path="/billing"
-                        element={
-                            <PageTransition>
-                                <BillingPage/>
-                            </PageTransition>
-                        }
-                    />
-                    <Route
-                        path="/"
-                        element={
-                            <PageTransition>
-                                <QuickBillPage/>
-                            </PageTransition>
-                        }
-                    />
-                    <Route
-                        path="/history"
-                        element={
-                            <PageTransition>
-                                <HistoryPage/>
-                            </PageTransition>
-                        }
-                    />
-                    <Route
-                        path="admin/printers"
-                        element={
-                            <PageTransition>
-                                <PrinterManagement/>
-                            </PageTransition>
-                        }
-                    />
-                </Routes>
-            </AnimatePresence>
-        </Layout>
+                        </Layout>
+                    }
+                />
+
+                {/* Protected Routes */}
+                <Route
+                    path="/*"
+                    element={
+                        <ProtectedRoute>
+                            <Layout>
+                                <AnimatePresence mode="wait">
+                                    <Routes location={location} key={location.pathname}>
+                                        {/* Admin Routes */}
+                                        <Route
+                                            path="/admin/users"
+                                            element={
+                                                <ProtectedRoute roles={['admin']}>
+                                                    <PageTransition>
+                                                        <UserManagement />
+                                                    </PageTransition>
+                                                </ProtectedRoute>
+                                            }
+                                        />
+                                        <Route
+                                            path="/admin/item"
+                                            element={
+                                                <ProtectedRoute roles={['admin']}>
+                                                    <PageTransition>
+                                                        <ItemManagement />
+                                                    </PageTransition>
+                                                </ProtectedRoute>
+                                            }
+                                        />
+                                        <Route
+                                            path="/admin/printers"
+                                            element={
+                                                <ProtectedRoute roles={['admin']}>
+                                                    <PageTransition>
+                                                        <PrinterManagement />
+                                                    </PageTransition>
+                                                </ProtectedRoute>
+                                            }
+                                        />
+
+                                        {/* Cashier/Admin Routes */}
+                                        <Route
+                                            path="/billing"
+                                            element={
+                                                <ProtectedRoute roles={['admin', 'cashier']}>
+                                                    <PageTransition>
+                                                        <BillingPage />
+                                                    </PageTransition>
+                                                </ProtectedRoute>
+                                            }
+                                        />
+                                        <Route
+                                            path="/quick-bill"
+                                            element={
+                                                <ProtectedRoute roles={['admin', 'cashier']}>
+                                                    <PageTransition>
+                                                        <QuickBillPage />
+                                                    </PageTransition>
+                                                </ProtectedRoute>
+                                            }
+                                        />
+                                        <Route
+                                            path="/history"
+                                            element={
+                                                <ProtectedRoute roles={['admin', 'cashier']}>
+                                                    <PageTransition>
+                                                        <HistoryPage />
+                                                    </PageTransition>
+                                                </ProtectedRoute>
+                                            }
+                                        />
+
+                                        {/* Catch all */}
+                                        <Route path="*" element={<Navigate to="/tables" replace />} />
+                                    </Routes>
+                                </AnimatePresence>
+                            </Layout>
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Default redirect to tables */}
+                <Route path="/" element={<Navigate to="/tables" replace />} />
+            </Routes>
+        </AuthProvider>
     );
 }
 
 export default App;
-

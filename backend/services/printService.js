@@ -30,8 +30,20 @@ async function generatePDFReceipt(billData) {
                 resolve(pdfBuffer);
             });
 
-            const { tableNumber, items, subtotal, discount, serviceCharge, serviceChargeAmount, finalAmount, closedAt } = billData;
+            const { tableNumber, items, subtotal, discount, serviceCharge, serviceChargeAmount, finalAmount, closedAt, isDraft } = billData;
             const date = new Date(closedAt);
+
+            // Add DRAFT watermark if this is a draft bill
+            if (isDraft) {
+                doc.fontSize(60)
+                    .fillColor('#FF0000', 0.3)
+                    .rotate(-45, { origin: [doc.page.width / 2, doc.page.height / 2] })
+                    .text('DRAFT', doc.page.width / 2 - 80, doc.page.height / 2 - 30, {
+                        align: 'center'
+                    })
+                    .rotate(45, { origin: [doc.page.width / 2, doc.page.height / 2] })
+                    .fillColor('#000000', 1);
+            }
 
             // Add logo if exists
             if (fs.existsSync(COMPANY_INFO.logoPath)) {
@@ -322,8 +334,166 @@ async function sendPrintJob(app, billData) {
     });
 }
 
+/**
+ * Print KOT (Kitchen Order Ticket)
+ */
+async function printKOT(app, kotData) {
+    return new Promise((resolve, reject) => {
+        try {
+            const { kotId, tableNumber, items, waiterName, timestamp } = kotData;
+
+            const date = new Date(timestamp);
+            const dateStr = date.toLocaleDateString();
+            const timeStr = date.toLocaleTimeString();
+
+            let receipt = '';
+
+            // Header
+            receipt += '    ===========================================\n';
+            receipt += '               🍳 KITCHEN ORDER (KOT)\n';
+            receipt += '    ===========================================\n\n';
+
+            // Order Info
+            receipt += `    KOT #: ${kotId}\n`;
+            receipt += `    Table: ${tableNumber}\n`;
+            receipt += `    Waiter: ${waiterName}\n`;
+            receipt += `    Time: ${timeStr}\n`;
+            receipt += `    Date: ${dateStr}\n`;
+            receipt += '    -------------------------------------------\n\n';
+
+            // Items
+            receipt += '    ITEMS:\n';
+            receipt += '    -------------------------------------------\n';
+            items.forEach((item, index) => {
+                receipt += `    ${index + 1}. ${item.name}\n`;
+                receipt += `       Qty: ${item.quantity}\n`;
+                if (item.notes) {
+                    receipt += `       Notes: ${item.notes}\n`;
+                }
+                receipt += '\n';
+            });
+
+            receipt += '    ===========================================\n\n\n';
+
+            // Get kitchen printer
+            const printer = db.prepare("SELECT * FROM printers WHERE type = 'kitchen' AND is_active = 1").get();
+
+            if (!printer) {
+                console.log('No kitchen printer configured');
+                return resolve({ success: false, message: 'No kitchen printer' });
+            }
+
+            const printServerSocket = app.get('printServerSocket');
+            if (!printServerSocket || !printServerSocket.connected) {
+                console.log('Print server not connected');
+                return resolve({ success: false, message: 'Print server offline' });
+            }
+
+            const jobId = uuidv4();
+            const printJob = {
+                id: jobId,
+                printer: printer.name,
+                content: receipt,
+                timestamp: new Date().toISOString()
+            };
+
+            printServerSocket.emit('print-job', printJob);
+
+            resolve({
+                success: true,
+                jobId,
+                printer: printer.name
+            });
+
+        } catch (error) {
+            console.error('KOT print error:', error);
+            reject(error);
+        }
+    });
+}
+
+/**
+ * Print BOT (Bar Order Ticket)
+ */
+async function printBOT(app, botData) {
+    return new Promise((resolve, reject) => {
+        try {
+            const { botId, tableNumber, items, waiterName, timestamp } = botData;
+
+            const date = new Date(timestamp);
+            const dateStr = date.toLocaleDateString();
+            const timeStr = date.toLocaleTimeString();
+
+            let receipt = '';
+
+            // Header
+            receipt += '    ===========================================\n';
+            receipt += '               🍹 BAR ORDER (BOT)\n';
+            receipt += '    ===========================================\n\n';
+
+            // Order Info
+            receipt += `    BOT #: ${botId}\n`;
+            receipt += `    Table: ${tableNumber}\n`;
+            receipt += `    Waiter: ${waiterName}\n`;
+            receipt += `    Time: ${timeStr}\n`;
+            receipt += `    Date: ${dateStr}\n`;
+            receipt += '    -------------------------------------------\n\n';
+
+            // Items
+            receipt += '    ITEMS:\n';
+            receipt += '    -------------------------------------------\n';
+            items.forEach((item, index) => {
+                receipt += `    ${index + 1}. ${item.name}\n`;
+                receipt += `       Qty: ${item.quantity}\n`;
+                if (item.notes) {
+                    receipt += `       Notes: ${item.notes}\n`;
+                }
+                receipt += '\n';
+            });
+
+            receipt += '    ===========================================\n\n\n';
+
+            // Get bar printer
+            const printer = db.prepare("SELECT * FROM printers WHERE type = 'bar' AND is_active = 1").get();
+
+            if (!printer) {
+                console.log('No bar printer configured');
+                return resolve({ success: false, message: 'No bar printer' });
+            }
+
+            const printServerSocket = app.get('printServerSocket');
+            if (!printServerSocket || !printServerSocket.connected) {
+                console.log('Print server not connected');
+                return resolve({ success: false, message: 'Print server offline' });
+            }
+
+            const jobId = uuidv4();
+            const printJob = {
+                id: jobId,
+                printer: printer.name,
+                content: receipt,
+                timestamp: new Date().toISOString()
+            };
+
+            printServerSocket.emit('print-job', printJob);
+
+            resolve({
+                success: true,
+                jobId,
+                printer: printer.name
+            });
+
+        } catch (error) {
+            console.error('BOT print error:', error);
+            reject(error);
+        }
+    });
+}
+
 module.exports = {
     sendPrintJob,
     formatReceipt,
-    generatePDFReceipt
+    generatePDFReceipt,
+    printKOT,
+    printBOT
 };

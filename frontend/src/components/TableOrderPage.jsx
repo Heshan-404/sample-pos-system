@@ -3,7 +3,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { itemsAPI, ordersAPI, subcategoriesAPI } from '../services/api';
+import { itemsAPI, ordersAPI, subcategoriesAPI, authAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 // Auto Light/Dark mode + bg option 3: light bg-gray-100 / dark bg-gray-900
 // Cards: bg-white (light) / bg-gray-800 (dark)
@@ -11,6 +12,14 @@ import { itemsAPI, ordersAPI, subcategoriesAPI } from '../services/api';
 const TableOrderPage = () => {
     const { tableNumber } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
+
+    // Waiter PIN state
+    const [showWaiterPIN, setShowWaiterPIN] = useState(false);
+    const [waiterPIN, setWaiterPIN] = useState('');
+    const [waiter, setWaiter] = useState(null);
+    const [pinError, setPinError] = useState('');
+    const [verifyingPIN, setVerifyingPIN] = useState(false);
 
     const [items, setItems] = useState([]);
     const [subcategories, setSubcategories] = useState([]);
@@ -44,6 +53,39 @@ const TableOrderPage = () => {
     useEffect(() => {
         setActiveSubcategory(null);
     }, [activeTab]);
+
+    // Check if waiter PIN required
+    useEffect(() => {
+        if (!user && !waiter) {
+            setShowWaiterPIN(true);
+        }
+    }, [user, waiter]);
+
+    // Handle waiter PIN submission
+    const handleWaiterPINSubmit = async () => {
+        if (!waiterPIN || waiterPIN.length < 4) {
+            setPinError('Please enter a valid PIN');
+            return;
+        }
+
+        setVerifyingPIN(true);
+        setPinError('');
+
+        try {
+            const response = await authAPI.verifyPin(waiterPIN);
+            if (response.data.success) {
+                setWaiter(response.data.data);
+                setShowWaiterPIN(false);
+                setWaiterPIN('');
+            } else {
+                setPinError('Invalid PIN');
+            }
+        } catch (error) {
+            setPinError('Invalid PIN');
+        } finally {
+            setVerifyingPIN(false);
+        }
+    };
 
     // check if item is in cart → highlight card
     const isItemInCart = (itemId) => cart.some((c) => c.id === itemId && !c.isCustom);
@@ -344,8 +386,8 @@ const TableOrderPage = () => {
                                     <button
                                         onClick={() => setActiveSubcategory(null)}
                                         className={`px-3 py-1 text-sm rounded ${activeSubcategory === null
-                                                ? 'bg-green-600 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
+                                            ? 'bg-green-600 text-white'
+                                            : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
                                             }`}
                                     >
                                         All
@@ -355,8 +397,8 @@ const TableOrderPage = () => {
                                             key={subcat.id}
                                             onClick={() => setActiveSubcategory(subcat.id)}
                                             className={`px-3 py-1 text-sm rounded ${activeSubcategory === subcat.id
-                                                    ? 'bg-green-600 text-white'
-                                                    : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
+                                                ? 'bg-green-600 text-white'
+                                                : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
                                                 }`}
                                         >
                                             {subcat.name}
@@ -469,23 +511,30 @@ const TableOrderPage = () => {
                         <div className="text-center py-6 text-gray-500 dark:text-gray-400">No items yet</div>
                     ) : (
                         <div className="space-y-3 max-h-[36vh] overflow-auto">
-                            {editableOrderItems.map((oi) => (
-                                <div key={oi.id} className="flex items-center justify-between p-2 rounded bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600">
-                                    <div>
-                                        <div className="font-semibold text-gray-900 dark:text-gray-100">{truncate(oi.name)}</div>
-                                        <div className="text-xs text-gray-600 dark:text-gray-300">LKR {fmt(oi.price)} × {oi.quantity}</div>
-                                    </div>
-
-                                    <div className="flex flex-col items-end">
-                                        <div className="flex items-center gap-2">
-                                            <button onClick={() => decEditableItem(oi.id)} className="px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded text-gray-900 dark:text-gray-100">-</button>
-                                            <input type="number" min="0" value={oi.quantity} onChange={(e) => setEditableItemQty(oi.id, e.target.value)} className="w-16 text-center border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded" />
-                                            <button onClick={() => incEditableItem(oi.id)} className="px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded text-gray-900 dark:text-gray-100">+</button>
+                            {editableOrderItems.map((oi) => {
+                                const canEdit = user && (user.role === 'admin' || user.role === 'cashier');
+                                return (
+                                    <div key={oi.id} className="flex items-center justify-between p-2 rounded bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600">
+                                        <div>
+                                            <div className="font-semibold text-gray-900 dark:text-gray-100">{truncate(oi.name)}</div>
+                                            <div className="text-xs text-gray-600 dark:text-gray-300">LKR {fmt(oi.price)} × {oi.quantity}</div>
                                         </div>
-                                        <button onClick={() => handleLocalDelete(oi.id)} className="text-red-600 dark:text-red-400 text-xs mt-2">Delete</button>
+
+                                        {canEdit ? (
+                                            <div className="flex flex-col items-end">
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => decEditableItem(oi.id)} className="px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded text-gray-900 dark:text-gray-100">-</button>
+                                                    <input type="number" min="0" value={oi.quantity} onChange={(e) => setEditableItemQty(oi.id, e.target.value)} className="w-16 text-center border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded" />
+                                                    <button onClick={() => incEditableItem(oi.id)} className="px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded text-gray-900 dark:text-gray-100">+</button>
+                                                </div>
+                                                <button onClick={() => handleLocalDelete(oi.id)} className="text-red-600 dark:text-red-400 text-xs mt-2">Delete</button>
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">Qty: {oi.quantity}</div>
+                                        )}
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
 
@@ -494,7 +543,31 @@ const TableOrderPage = () => {
                         <span>LKR {fmt(editableOrderTotal)}</span>
                     </div>
 
-                    <button onClick={() => navigate(`/billing?table=${tableNumber}`)} className="w-full py-2 rounded mt-3 bg-green-600 hover:bg-green-700 text-white">Go To Billing</button>
+                    {user && (user.role === 'admin' || user.role === 'cashier') ? (
+                        <button onClick={() => navigate(`/billing?table=${tableNumber}`)} className="w-full py-2 rounded mt-3 bg-green-600 hover:bg-green-700 text-white">Go To Billing</button>
+                    ) : (
+                        <button
+                            onClick={async () => {
+                                try {
+                                    const response = await fetch(`http://localhost:5000/api/print/draft-bill/${tableNumber}`);
+                                    const blob = await response.blob();
+                                    const url = window.URL.createObjectURL(blob);
+                                    const link = document.createElement('a');
+                                    link.href = url;
+                                    link.download = `draft-bill-table-${tableNumber}.pdf`;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    link.remove();
+                                    window.URL.revokeObjectURL(url);
+                                } catch (error) {
+                                    alert('Failed to generate draft bill');
+                                }
+                            }}
+                            className="w-full py-2 rounded mt-3 bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                            📄 Get Draft Bill
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -531,6 +604,92 @@ const TableOrderPage = () => {
             {/*        </div>*/}
             {/*    </div>*/}
             {/*)}*/}
+
+            {/* Waiter PIN Modal */}
+            {showWaiterPIN && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 max-w-md w-full">
+                        <h2 className="text-2xl font-bold mb-2 text-center text-gray-900 dark:text-white">
+                            🔐 Enter Waiter PIN
+                        </h2>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-6">
+                            Table {tableNumber}
+                        </p>
+
+                        {pinError && (
+                            <div className="mb-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm text-center">
+                                {pinError}
+                            </div>
+                        )}
+
+                        <div className="mb-6 bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
+                            <div className="text-center text-4xl tracking-[0.5em] font-bold text-gray-900 dark:text-white min-h-[3rem] flex items-center justify-center">
+                                {waiterPIN ? '•'.repeat(waiterPIN.length) : '••••'}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3 mb-6">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                                <button
+                                    key={num}
+                                    onClick={() => {
+                                        if (waiterPIN.length < 6) {
+                                            setWaiterPIN(waiterPIN + num);
+                                            setPinError('');
+                                        }
+                                    }}
+                                    className="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-2xl font-bold py-4 rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all active:scale-95"
+                                >
+                                    {num}
+                                </button>
+                            ))}
+                            <button
+                                onClick={() => setWaiterPIN('')}
+                                className="bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-sm font-semibold py-4 rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all active:scale-95"
+                            >
+                                Clear
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (waiterPIN.length < 6) {
+                                        setWaiterPIN(waiterPIN + '0');
+                                        setPinError('');
+                                    }
+                                }}
+                                className="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-2xl font-bold py-4 rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all active:scale-95"
+                            >
+                                0
+                            </button>
+                            <button
+                                onClick={() => setWaiterPIN(waiterPIN.slice(0, -1))}
+                                className="bg-gradient-to-br from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white text-sm font-semibold py-4 rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all active:scale-95"
+                            >
+                                ⌫ Back
+                            </button>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleWaiterPINSubmit}
+                                disabled={verifyingPIN || waiterPIN.length < 4}
+                                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {verifyingPIN ? 'Verifying...' : '✓ Submit'}
+                            </button>
+                            <button
+                                onClick={() => navigate('/tables')}
+                                className="flex-1 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-3 rounded-lg hover:bg-gray-400 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+
+                        <div className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                            Enter your 4-6 digit PIN
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

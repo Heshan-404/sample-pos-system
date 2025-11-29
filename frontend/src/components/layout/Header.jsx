@@ -2,7 +2,7 @@ import { Menu } from 'lucide-react';
 
 export default function Header({ onMenuClick }) {
     return (
-        <header className=" hidden fixed top-0 left-0 right-0 z-50 h-16 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg shadow-md safe-area-top">
+        <header className="hidden fixed top-0 left-0 right-0 z-50 h-16 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg shadow-md safe-area-top">
             <div className="h-full max-w-7xl mx-auto px-4 flex items-center justify-between">
                 {/* Left: Menu button (mobile) */}
                 <button
