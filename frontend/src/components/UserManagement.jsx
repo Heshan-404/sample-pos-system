@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usersAPI } from '../services/api';
 
 const UserManagement = () => {
@@ -6,6 +6,9 @@ const UserManagement = () => {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
+    const [roleFilter, setRoleFilter] = useState('all');
+    const [showPinUpdate, setShowPinUpdate] = useState(false);
+    const [adminPassword, setAdminPassword] = useState('');
     const [formData, setFormData] = useState({
         username: '',
         password: '',
@@ -42,8 +45,10 @@ const UserManagement = () => {
                 password: '',
                 role: user.role,
                 full_name: user.full_name,
-                pin: user.pin || ''
+                pin: ''
             });
+            setShowPinUpdate(false);
+            setAdminPassword('');
         } else {
             setEditingUser(null);
             setFormData({
@@ -53,6 +58,8 @@ const UserManagement = () => {
                 full_name: '',
                 pin: ''
             });
+            setShowPinUpdate(false);
+            setAdminPassword('');
         }
         setShowModal(true);
         setError('');
@@ -61,6 +68,8 @@ const UserManagement = () => {
     const handleCloseModal = () => {
         setShowModal(false);
         setEditingUser(null);
+        setShowPinUpdate(false);
+        setAdminPassword('');
         setError('');
     };
 
@@ -69,16 +78,31 @@ const UserManagement = () => {
         setError('');
 
         try {
+            // Prepare update data
+            const updateData = { ...formData };
+
+            // For updates
             if (editingUser) {
-                // Update user
-                const updateData = { ...formData };
+                // Remove password if empty
                 if (!updateData.password) {
-                    delete updateData.password; // Don't update password if empty
+                    delete updateData.password;
                 }
+
+                // Handle PIN update with admin password verification
+                if (showPinUpdate && updateData.pin) {
+                    if (!adminPassword) {
+                        setError('Admin password is required to update PIN');
+                        return;
+                    }
+                    updateData.adminPassword = adminPassword;
+                } else {
+                    delete updateData.pin;
+                }
+
                 await usersAPI.update(editingUser.id, updateData);
                 setSuccessMessage('User updated successfully!');
             } else {
-                // Create new user
+                // For new users
                 if (!formData.password) {
                     setError('Password is required for new users');
                     return;
@@ -132,6 +156,20 @@ const UserManagement = () => {
         }
     };
 
+    // Filter users based on selected role
+    const filteredUsers = useMemo(() => {
+        if (roleFilter === 'all') return users;
+        return users.filter(user => user.role === roleFilter);
+    }, [users, roleFilter]);
+
+    // Calculate user counts by role
+    const userCounts = useMemo(() => ({
+        all: users.length,
+        admin: users.filter(u => u.role === 'admin').length,
+        cashier: users.filter(u => u.role === 'cashier').length,
+        waiter: users.filter(u => u.role === 'waiter').length
+    }), [users]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -169,7 +207,51 @@ const UserManagement = () => {
                 </div>
             )}
 
-            {/* Users Table */}
+            {/* Role Filter Buttons */}
+            <div className="mb-6 flex gap-3 flex-wrap">
+                <button
+                    onClick={() => setRoleFilter('all')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                        roleFilter === 'all'
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                >
+                    All Users ({userCounts.all})
+                </button>
+                <button
+                    onClick={() => setRoleFilter('admin')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                        roleFilter === 'admin'
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                >
+                    Admins ({userCounts.admin})
+                </button>
+                <button
+                    onClick={() => setRoleFilter('cashier')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                        roleFilter === 'cashier'
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                >
+                    Cashiers ({userCounts.cashier})
+                </button>
+                <button
+                    onClick={() => setRoleFilter('waiter')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                        roleFilter === 'waiter'
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                >
+                    Waiters ({userCounts.waiter})
+                </button>
+            </div>
+
+            {/* Users Table - PIN column removed */}
             <div className="card overflow-x-auto">
                 <table className="w-full">
                     <thead>
@@ -177,14 +259,13 @@ const UserManagement = () => {
                             <th className="text-left p-4">Username</th>
                             <th className="text-left p-4">Full Name</th>
                             <th className="text-left p-4">Role</th>
-                            <th className="text-left p-4">PIN</th>
                             <th className="text-left p-4">Status</th>
                             <th className="text-left p-4">Created</th>
                             <th className="text-left p-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {users.map((user) => (
+                        {filteredUsers.map((user) => (
                             <tr key={user.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
                                 <td className="p-4 font-medium">{user.username}</td>
                                 <td className="p-4">{user.full_name}</td>
@@ -194,21 +275,13 @@ const UserManagement = () => {
                                     </span>
                                 </td>
                                 <td className="p-4">
-                                    {user.pin ? (
-                                        <span className="font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                                            {user.pin}
-                                        </span>
-                                    ) : (
-                                        <span className="text-gray-400">-</span>
-                                    )}
-                                </td>
-                                <td className="p-4">
                                     <button
                                         onClick={() => handleToggleStatus(user.id)}
-                                        className={`px-3 py-1 rounded-full text-sm font-semibold ${user.is_active
+                                        className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                                            user.is_active
                                                 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                                                 : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                            }`}
+                                        }`}
                                     >
                                         {user.is_active ? 'Active' : 'Inactive'}
                                     </button>
@@ -237,9 +310,9 @@ const UserManagement = () => {
                     </tbody>
                 </table>
 
-                {users.length === 0 && (
+                {filteredUsers.length === 0 && (
                     <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                        No users found. Add your first user!
+                        {roleFilter === 'all' ? 'No users found.' : `No ${roleFilter}s found.`}
                     </div>
                 )}
             </div>
@@ -247,7 +320,7 @@ const UserManagement = () => {
             {/* Add/Edit Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
                         <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
                             {editingUser ? 'Edit User' : 'Add New User'}
                         </h2>
@@ -308,22 +381,84 @@ const UserManagement = () => {
                                 </select>
                             </div>
 
+                            {/* PIN Section for Waiters */}
                             {formData.role === 'waiter' && (
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        PIN (4-6 digits)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        pattern="[0-9]{4,6}"
-                                        maxLength="6"
-                                        className="input-field"
-                                        value={formData.pin}
-                                        onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
-                                        placeholder="Enter 4-6 digit PIN"
-                                        required={formData.role === 'waiter'}
-                                    />
-                                </div>
+                                <>
+                                    {!editingUser ? (
+                                        // Creating new waiter
+                                        <div>
+                                            <label className="block text-sm font-medium mb-2">
+                                                PIN (4-6 digits)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                pattern="[0-9]{4,6}"
+                                                maxLength="6"
+                                                className="input-field"
+                                                value={formData.pin}
+                                                onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
+                                                placeholder="Enter 4-6 digit PIN"
+                                                required
+                                            />
+                                        </div>
+                                    ) : (
+                                        // Editing existing waiter
+                                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                                            {!showPinUpdate ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPinUpdate(true)}
+                                                    className="text-blue-600 dark:text-blue-400 text-sm hover:underline"
+                                                >
+                                                    🔐 Update PIN
+                                                </button>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <label className="text-sm font-medium">Update PIN</label>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setShowPinUpdate(false);
+                                                                setFormData({ ...formData, pin: '' });
+                                                                setAdminPassword('');
+                                                            }}
+                                                            className="text-red-600 text-sm hover:underline"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        pattern="[0-9]{4,6}"
+                                                        maxLength="6"
+                                                        className="input-field"
+                                                        value={formData.pin}
+                                                        onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
+                                                        placeholder="Enter new 4-6 digit PIN"
+                                                        required
+                                                    />
+                                                    <div>
+                                                        <label className="block text-sm font-medium mb-2 text-red-600 dark:text-red-400">
+                                                            Admin Password Required *
+                                                        </label>
+                                                        <input
+                                                            type="password"
+                                                            className="input-field"
+                                                            value={adminPassword}
+                                                            onChange={(e) => setAdminPassword(e.target.value)}
+                                                            placeholder="Enter your admin password"
+                                                            required
+                                                        />
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                            Your password is required for security
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
                             )}
 
                             <div className="flex gap-3 mt-6">

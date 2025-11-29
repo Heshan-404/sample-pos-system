@@ -5,7 +5,12 @@ const db = require('../db/database');
 // Get all printers
 router.get('/', (req, res) => {
     try {
-        const printers = db.prepare('SELECT * FROM printers ORDER BY created_at DESC').all();
+        const printers = db.prepare(`
+            SELECT printers.*, shops.name as shopName 
+            FROM printers 
+            LEFT JOIN shops ON printers.shopId = shops.id 
+            ORDER BY printers.created_at DESC
+        `).all();
         res.json({ success: true, data: printers });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -15,7 +20,7 @@ router.get('/', (req, res) => {
 // Add/Register a printer
 router.post('/', (req, res) => {
     try {
-        const { name, ip, port } = req.body;
+        const { name, ip, port, shopId } = req.body;
 
         if (!name || !ip || !port) {
             return res.status(400).json({
@@ -25,11 +30,11 @@ router.post('/', (req, res) => {
         }
 
         const stmt = db.prepare(`
-            INSERT INTO printers (name, ip, port) 
-            VALUES (?, ?, ?)
+            INSERT INTO printers (name, ip, port, shopId) 
+            VALUES (?, ?, ?, ?)
         `);
 
-        const result = stmt.run(name, ip, parseInt(port));
+        const result = stmt.run(name, ip, parseInt(port), shopId || null);
 
         const printer = db.prepare('SELECT * FROM printers WHERE id = ?').get(result.lastInsertRowid);
 
@@ -43,15 +48,15 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
     try {
         const { id } = req.params;
-        const { name, ip, port, isActive } = req.body;
+        const { name, ip, port, isActive, shopId } = req.body;
 
         const stmt = db.prepare(`
             UPDATE printers 
-            SET name = ?, ip = ?, port = ?, isActive = ?
+            SET name = ?, ip = ?, port = ?, isActive = ?, shopId = ?
             WHERE id = ?
         `);
 
-        stmt.run(name, ip, parseInt(port), isActive ? 1 : 0, id);
+        stmt.run(name, ip, parseInt(port), isActive ? 1 : 0, shopId || null, id);
 
         const printer = db.prepare('SELECT * FROM printers WHERE id = ?').get(id);
 

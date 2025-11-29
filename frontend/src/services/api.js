@@ -34,7 +34,8 @@ export const usersAPI = {
     create: (userData) => api.post('/users', userData),
     update: (id, userData) => api.put(`/users/${id}`, userData),
     delete: (id) => api.delete(`/users/${id}`),
-    toggleStatus: (id) => api.put(`/users/${id}/toggle`)
+    toggleStatus: (id) => api.put(`/users/${id}/toggle`),
+    updatePin: (id, data) => api.put(`/users/${id}/pin`, data)
 };
 
 // Items API (existing - just adding here)
@@ -52,6 +53,12 @@ export const subcategoriesAPI = {
     create: (subcategory) => api.post('/subcategories', subcategory),
     update: (id, subcategory) => api.put(`/subcategories/${id}`, subcategory),
     delete: (id) => api.delete(`/subcategories/${id}`)
+};
+
+// Shops API
+export const shopsAPI = {
+    getAll: () => api.get('/shops'),
+    create: (shop) => api.post('/shops', shop)
 };
 
 // Orders API

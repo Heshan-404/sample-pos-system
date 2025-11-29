@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { itemsAPI, ordersAPI, printAPI, subcategoriesAPI } from '../services/api';
+import { itemsAPI, ordersAPI, printAPI, subcategoriesAPI, shopsAPI } from '../services/api';
 import ConfirmModal from './ConfirmModal';
 
 const QuickBillPage = () => {
@@ -8,6 +8,7 @@ const QuickBillPage = () => {
 
     const [items, setItems] = useState([]);
     const [subcategories, setSubcategories] = useState([]);
+    const [shops, setShops] = useState([]);
     const [loadingItems, setLoadingItems] = useState(false);
     const [activeTab, setActiveTab] = useState('KOT');
     const [activeSubcategory, setActiveSubcategory] = useState(null);
@@ -29,6 +30,7 @@ const QuickBillPage = () => {
     useEffect(() => {
         fetchItems();
         fetchSubcategories();
+        fetchShops();
     }, []);
 
     // Reset subcategory when changing main category
@@ -59,12 +61,28 @@ const QuickBillPage = () => {
         }
     };
 
+    const fetchShops = async () => {
+        try {
+            const res = await shopsAPI.getAll();
+            setShops(res.data?.success ? res.data.data : []);
+        } catch (err) {
+            console.error('fetchShops error', err);
+            setShops([]);
+        }
+    };
+
     // Filter items by category and optionally by subcategory
     const filteredItems = useMemo(() => {
-        let filtered = items.filter((i) =>
-            (i.category || '').toUpperCase() === (activeTab || '').toUpperCase() &&
-            i.isActive !== 0 // Filter out inactive items
-        );
+        let filtered = items.filter(i => i.isActive !== 0);
+
+        if (activeTab === 'ALL') {
+            // No filter
+        } else if (activeTab === 'KOT' || activeTab === 'BOT') {
+            filtered = filtered.filter((i) => (i.category || '').toUpperCase() === activeTab);
+        } else {
+            // Assume activeTab is a shopId (number)
+            filtered = filtered.filter((i) => i.shopId === activeTab);
+        }
 
         // If a subcategory is selected, filter further
         if (activeSubcategory !== null) {
@@ -75,9 +93,17 @@ const QuickBillPage = () => {
     }, [items, activeTab, activeSubcategory]);
 
     // Get subcategories for current tab
+    // Get subcategories for current tab
     const currentSubcategories = useMemo(() => {
-        return subcategories.filter((sub) => sub.mainCategory === activeTab);
-    }, [subcategories, activeTab]);
+        if (activeTab === 'ALL') return subcategories;
+        if (activeTab === 'KOT' || activeTab === 'BOT') {
+            return subcategories.filter((sub) => sub.mainCategory === activeTab);
+        }
+        // If shop selected
+        const shopItems = items.filter(i => i.shopId === activeTab);
+        const shopSubcatIds = new Set(shopItems.map(i => i.subcategoryId).filter(id => id));
+        return subcategories.filter(sub => shopSubcatIds.has(sub.id));
+    }, [subcategories, activeTab, items]);
 
     // Cart operations
     const addItemToCart = (item) => {
@@ -331,10 +357,19 @@ const QuickBillPage = () => {
                             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Select Items</h2>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                        <button
+                                            onClick={() => setActiveTab('ALL')}
+                                            className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${activeTab === 'ALL'
+                                                ? 'bg-blue-600 text-white shadow-md'
+                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                                }`}
+                                        >
+                                            All
+                                        </button>
                                         <button
                                             onClick={() => setActiveTab('KOT')}
-                                            className={`px-4 py-2 rounded-lg font-semibold transition-all ${activeTab === 'KOT'
+                                            className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${activeTab === 'KOT'
                                                 ? 'bg-blue-600 text-white shadow-md'
                                                 : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
                                                 }`}
@@ -343,13 +378,25 @@ const QuickBillPage = () => {
                                         </button>
                                         <button
                                             onClick={() => setActiveTab('BOT')}
-                                            className={`px-4 py-2 rounded-lg font-semibold transition-all ${activeTab === 'BOT'
+                                            className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${activeTab === 'BOT'
                                                 ? 'bg-blue-600 text-white shadow-md'
                                                 : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
                                                 }`}
                                         >
                                             BOT
                                         </button>
+                                        {shops.map((shop) => (
+                                            <button
+                                                key={shop.id}
+                                                onClick={() => setActiveTab(shop.id)}
+                                                className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${activeTab === shop.id
+                                                    ? 'bg-blue-600 text-white shadow-md'
+                                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                                    }`}
+                                            >
+                                                {shop.name}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
 

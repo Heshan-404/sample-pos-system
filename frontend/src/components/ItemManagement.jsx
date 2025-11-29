@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { itemsAPI, subcategoriesAPI } from '../services/api';
+import { itemsAPI, subcategoriesAPI, shopsAPI } from '../services/api';
 
 const ItemManagement = () => {
     const [items, setItems] = useState([]);
     const [subcategories, setSubcategories] = useState([]);
+    const [shops, setShops] = useState([]);
     const [filteredSubcategories, setFilteredSubcategories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -16,17 +17,22 @@ const ItemManagement = () => {
         mainCategory: 'KOT',
     });
 
+    const [showShopModal, setShowShopModal] = useState(false);
+    const [shopName, setShopName] = useState('');
+
     const [formData, setFormData] = useState({
         name: '',
         price: '',
         category: 'KOT',
         subcategoryId: '',
+        shopId: '',
     });
 
     // Fetch items and subcategories on component mount
     useEffect(() => {
         fetchItems();
         fetchSubcategories();
+        fetchShops();
     }, []);
 
     // Update filtered subcategories when category changes
@@ -63,6 +69,17 @@ const ItemManagement = () => {
         }
     };
 
+    const fetchShops = async () => {
+        try {
+            const response = await shopsAPI.getAll();
+            if (response.data.success) {
+                setShops(response.data.data);
+            }
+        } catch (error) {
+            console.error('Error fetching shops:', error);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -73,11 +90,12 @@ const ItemManagement = () => {
                 price: parseFloat(formData.price),
                 category: formData.category,
                 subcategoryId: formData.subcategoryId || null,
+                shopId: formData.shopId || null,
             });
 
             if (response.data.success) {
                 alert('Item created successfully!');
-                setFormData({ name: '', price: '', category: 'KOT', subcategoryId: '' });
+                setFormData({ name: '', price: '', category: 'KOT', subcategoryId: '', shopId: '' });
                 fetchItems();
             }
         } catch (error) {
@@ -101,6 +119,22 @@ const ItemManagement = () => {
         } catch (error) {
             console.error('Error creating subcategory:', error);
             alert(error.response?.data?.error || 'Failed to create subcategory');
+        }
+    };
+
+    const handleShopSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const response = await shopsAPI.create({ name: shopName });
+            if (response.data.success) {
+                alert('Shop created successfully!');
+                setShopName('');
+                fetchShops();
+                setShowShopModal(false);
+            }
+        } catch (error) {
+            console.error('Error creating shop:', error);
+            alert(error.response?.data?.error || 'Failed to create shop');
         }
     };
 
@@ -146,8 +180,14 @@ const ItemManagement = () => {
                     Item Management
                 </h1>
 
-                {/* Subcategory Management Button */}
-                <div className="mb-4 flex justify-end">
+                {/* Subcategory & Shop Management Buttons */}
+                <div className="mb-4 flex justify-end gap-2">
+                    <button
+                        onClick={() => setShowShopModal(true)}
+                        className="btn-secondary"
+                    >
+                        🏪 Manage Shops
+                    </button>
                     <button
                         onClick={() => setShowSubcategoryModal(true)}
                         className="btn-secondary"
@@ -226,6 +266,25 @@ const ItemManagement = () => {
                                     ))}
                                 </select>
                             </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Shop *
+                                </label>
+                                <select
+                                    className="input-field"
+                                    value={formData.shopId}
+                                    onChange={(e) => setFormData({ ...formData, shopId: e.target.value })}
+                                    required
+                                >
+                                    <option value="">Select Shop</option>
+                                    {shops.map((shop) => (
+                                        <option key={shop.id} value={shop.id}>
+                                            {shop.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         <button type="submit" className="btn-primary w-full" disabled={loading}>
@@ -294,6 +353,7 @@ const ItemManagement = () => {
                                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Price</th>
                                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Category</th>
                                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Subcategory</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Shop</th>
                                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Status</th>
                                     </tr>
                                 </thead>
@@ -321,6 +381,9 @@ const ItemManagement = () => {
                                                 ) : (
                                                     <span className="text-gray-400 italic text-xs">None</span>
                                                 )}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                                                {item.shopName || <span className="text-gray-400 italic text-xs">None</span>}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <button
@@ -437,6 +500,66 @@ const ItemManagement = () => {
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Shop Management Modal */}
+            {showShopModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+                        <div className="p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+                                    Manage Shops
+                                </h2>
+                                <button
+                                    onClick={() => setShowShopModal(false)}
+                                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                                >
+                                    <span className="text-2xl">×</span>
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleShopSubmit} className="mb-6">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Shop Name
+                                </label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        className="input-field flex-1"
+                                        value={shopName}
+                                        onChange={(e) => setShopName(e.target.value)}
+                                        required
+                                        placeholder="e.g., Kitchen, Bar"
+                                    />
+                                    <button type="submit" className="btn-primary">
+                                        Add
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div>
+                                <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">
+                                    Existing Shops
+                                </h3>
+                                <div className="space-y-2 max-h-60 overflow-y-auto">
+                                    {shops.map((shop) => (
+                                        <div
+                                            key={shop.id}
+                                            className="p-3 bg-gray-100 dark:bg-gray-700 rounded text-gray-700 dark:text-gray-200"
+                                        >
+                                            {shop.name}
+                                        </div>
+                                    ))}
+                                    {shops.length === 0 && (
+                                        <p className="text-gray-500 dark:text-gray-400 text-sm italic">
+                                            No shops yet
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>

@@ -1,13 +1,7 @@
-// TableOrderPage.jsx
-// Screenshot used for styling reference: /mnt/data/e7a9bdf2-32ec-4104-98ca-a87ca9c26d36.png
-
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { itemsAPI, ordersAPI, subcategoriesAPI, authAPI } from '../services/api';
+import { itemsAPI, ordersAPI, subcategoriesAPI, authAPI, shopsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-
-// Auto Light/Dark mode + bg option 3: light bg-gray-100 / dark bg-gray-900
-// Cards: bg-white (light) / bg-gray-800 (dark)
 
 const TableOrderPage = () => {
     const { tableNumber } = useParams();
@@ -23,13 +17,15 @@ const TableOrderPage = () => {
 
     const [items, setItems] = useState([]);
     const [subcategories, setSubcategories] = useState([]);
+    const [shops, setShops] = useState([]);
     const [currentOrder, setCurrentOrder] = useState(null);
 
     const [loadingItems, setLoadingItems] = useState(false);
     const [loadingOrder, setLoadingOrder] = useState(false);
     const [submittingCart, setSubmittingCart] = useState(false);
 
-    const [activeTab, setActiveTab] = useState('KOT');
+    const [activeMainCategory, setActiveMainCategory] = useState('KOT'); // 'KOT', 'BOT'
+    const [activeShop, setActiveShop] = useState(null); // shopId
     const [activeSubcategory, setActiveSubcategory] = useState(null);
     const [cart, setCart] = useState([]);
     const [editableOrderItems, setEditableOrderItems] = useState([]);
@@ -39,20 +35,20 @@ const TableOrderPage = () => {
     const [customName, setCustomName] = useState('Additional Item');
     const [customPrice, setCustomPrice] = useState('');
     const [customQty, setCustomQty] = useState(1);
-    // editingCustomId: if null -> creating new, otherwise editing cart item with this id
     const [editingCustomId, setEditingCustomId] = useState(null);
 
     useEffect(() => {
         fetchItems();
         fetchSubcategories();
+        fetchShops();
         fetchTableOrder();
         setCart([]);
     }, [tableNumber]);
 
-    // Reset subcategory when changing main category
+    // Reset subcategory when changing main category or shop
     useEffect(() => {
         setActiveSubcategory(null);
-    }, [activeTab]);
+    }, [activeMainCategory, activeShop]);
 
     // Check if waiter PIN required
     useEffect(() => {
@@ -115,6 +111,21 @@ const TableOrderPage = () => {
         }
     };
 
+    // Fetch shops
+    const fetchShops = async () => {
+        try {
+            const res = await shopsAPI.getAll();
+            const shopList = res.data?.success ? res.data.data : [];
+            setShops(shopList);
+            if (shopList.length > 0 && !activeShop) {
+                setActiveShop(shopList[0].id);
+            }
+        } catch (err) {
+            console.error('fetchShops error', err);
+            setShops([]);
+        }
+    };
+
     // Fetch order
     const fetchTableOrder = async () => {
         setLoadingOrder(true);
@@ -148,28 +159,48 @@ const TableOrderPage = () => {
         }
     };
 
-    // Filter items by category and optionally by subcategory
+    // Filter items by category/shop and optionally by subcategory
     const filteredItems = useMemo(() => {
-        let filtered = items.filter((i) =>
-            (i.category || '').toUpperCase() === (activeTab || '').toUpperCase() &&
-            i.isActive !== 0 // Filter out inactive items
-        );
+        let filtered = items.filter(i => i.isActive !== 0);
 
-        // If a subcategory is selected, filter further
+        // Filter by Main Category
+        if (activeMainCategory !== 'ALL') {
+            filtered = filtered.filter((i) => (i.category || '').toUpperCase() === activeMainCategory);
+        }
+
+        // Filter by Shop
+        if (activeShop !== 'ALL') {
+            filtered = filtered.filter((i) => i.shopId === activeShop);
+        }
+
+        // Filter by Subcategory
         if (activeSubcategory !== null) {
             filtered = filtered.filter((i) => i.subcategoryId === activeSubcategory);
         }
 
         return filtered;
-    }, [items, activeTab, activeSubcategory]);
+    }, [items, activeMainCategory, activeShop, activeSubcategory]);
 
     // Get subcategories for current tab
     const currentSubcategories = useMemo(() => {
-        return subcategories.filter((sub) => sub.mainCategory === activeTab);
-    }, [subcategories, activeTab]);
+        let relevantSubcats = subcategories;
+
+        // Filter by Main Category
+        if (activeMainCategory !== 'ALL') {
+            relevantSubcats = relevantSubcats.filter((sub) => sub.mainCategory === activeMainCategory);
+        }
+
+        // Filter by Shop (only show subcategories that exist in this shop)
+        if (activeShop !== 'ALL') {
+            const shopItems = items.filter(i => i.shopId === activeShop);
+            const shopSubcatIds = new Set(shopItems.map(i => i.subcategoryId).filter(id => id));
+            relevantSubcats = relevantSubcats.filter(sub => shopSubcatIds.has(sub.id));
+        }
+
+        return relevantSubcats;
+    }, [subcategories, activeMainCategory, activeShop, items]);
 
     // ---------- CART ----------
-    // Add normal item (from items grid) to cart
     const addItemToCartQuick = (item) => {
         setCart((prev) => {
             const exist = prev.find((c) => c.id === item.id && !c.isCustom);
@@ -189,10 +220,8 @@ const TableOrderPage = () => {
     };
     const truncate = (text, length = 20) =>
         text.length > length ? text.substring(0, length) + "..." : text;
-    // Add custom item to cart (new)
+
     const addCustomItemToCart = ({ name, price, quantity }) => {
-        // create a unique id for local cart item (use timestamp + random)
-        // const localId = `custom-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         setCart((prev) => [
             ...prev,
             {
@@ -212,9 +241,7 @@ const TableOrderPage = () => {
     const removeCartItem = (id) => setCart((p) => p.filter((c) => c.id !== id));
     const clearCart = () => setCart([]);
 
-    // precise total calculation (avoid float surprises)
     const cartTotal = useMemo(() => {
-        // accumulate with integer cents-like approach using 4 decimal places
         return cart.reduce((acc, c) => acc + Number((c.price * c.quantity).toFixed(4)), 0);
     }, [cart]);
 
@@ -222,16 +249,12 @@ const TableOrderPage = () => {
         if (!cart.length) return alert('Cart is empty');
         setSubmittingCart(true);
 
-        // Generate batch ID
         const batchId = `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-        // Determine user info
         const currentUser = user || waiter;
         const userId = currentUser?.id;
         const userName = currentUser?.full_name || currentUser?.username || currentUser?.name || (user ? 'Admin/Cashier' : 'Waiter');
 
         try {
-            // Attempt to send each cart item to backend.
             const results = await Promise.all(
                 cart.map((ci) => {
                     const payload = {
@@ -255,7 +278,6 @@ const TableOrderPage = () => {
                 })
             );
 
-            // If any failed, log and notify
             const someFailed = results.find((r) => !(r?.data?.success));
             if (someFailed) {
                 console.error('Some addItem calls failed', results);
@@ -273,16 +295,11 @@ const TableOrderPage = () => {
     };
 
     // ---------- REAL-TIME ORDER SYNC ----------
-
-
-
     const updateOrderItemQty = async (orderItemId, newQty) => {
         try {
             if (newQty === 0) {
-                // Delete item
                 await ordersAPI.removeItem(orderItemId);
             } else {
-                // Update item quantity
                 await ordersAPI.updateItemQuantity(orderItemId, newQty);
             }
         } catch (err) {
@@ -290,7 +307,6 @@ const TableOrderPage = () => {
             alert("Failed to update item");
         }
     };
-
 
     const incEditableItem = (id) => {
         const current = editableOrderItems.find((i) => i.id === id);
@@ -322,10 +338,8 @@ const TableOrderPage = () => {
         [editableOrderItems]
     );
 
-    // helper to render price with 2 decimals
     const fmt = (v) => Number(v).toFixed(2);
 
-    // Group orders by batch
     const groupedOrders = useMemo(() => {
         const groups = {};
         editableOrderItems.forEach(item => {
@@ -341,7 +355,6 @@ const TableOrderPage = () => {
             groups[batchId].items.push(item);
         });
 
-        // Sort by time desc (newest first)
         return Object.values(groups).sort((a, b) => {
             if (a.batchId === 'legacy') return 1;
             if (b.batchId === 'legacy') return -1;
@@ -349,11 +362,9 @@ const TableOrderPage = () => {
         });
     }, [editableOrderItems]);
 
-    // Consolidated items for total view
     const consolidatedItems = useMemo(() => {
         const map = {};
         editableOrderItems.forEach(item => {
-            // Use name as key for custom items or items with same ID but different batches
             const key = item.itemId;
             if (!map[key]) {
                 map[key] = { ...item, quantity: 0 };
@@ -363,7 +374,6 @@ const TableOrderPage = () => {
         return Object.values(map);
     }, [editableOrderItems]);
 
-    // -- Custom Item Modal handlers --
     const openCustomModalForCreate = () => {
         setEditingCustomId(null);
         setCustomName('Additional Item');
@@ -372,23 +382,13 @@ const TableOrderPage = () => {
         setShowCustomModal(true);
     };
 
-    const openCustomModalForEdit = (cartItem) => {
-        setEditingCustomId(cartItem.id);
-        setCustomName(cartItem.name);
-        setCustomPrice(String(cartItem.price ?? ''));
-        setCustomQty(cartItem.quantity ?? 1);
-        setShowCustomModal(true);
-    };
-
     const handleCustomSave = () => {
         const priceNum = Number(customPrice || 0);
         const qtyNum = Math.max(1, parseInt(customQty || 1, 10) || 1);
 
         if (!editingCustomId) {
-            // create new
             addCustomItemToCart({ name: customName || 'Additional Item', price: priceNum, quantity: qtyNum });
         } else {
-            // edit existing cart item
             setCart((prev) => prev.map((c) => (c.id === editingCustomId ? { ...c, name: customName, price: priceNum, quantity: qtyNum } : c)));
         }
 
@@ -414,66 +414,71 @@ const TableOrderPage = () => {
                             <button onClick={fetchTableOrder} className="px-3 py-2 bg-gray-200 dark:bg-gray-800 rounded text-sm text-gray-900 dark:text-gray-100">
                                 {loadingOrder ? 'Refreshing...' : 'Refresh'}
                             </button>
-
                         </div>
                     </div>
 
                     {/* Left: Add Items */}
                     <div className="md:col-span-2">
                         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Add Items</h2>
-                                <div className="flex gap-2">
-                                    <button onClick={() => setActiveTab('KOT')} className={`px-3 py-1 rounded ${activeTab === 'KOT' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100'}`}>
-                                        KOT
-                                    </button>
-                                    <button onClick={() => setActiveTab('BOT')} className={`px-3 py-1 rounded ${activeTab === 'BOT' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100'}`}>
-                                        BOT
-                                    </button>
+                            <div className="mb-4 space-y-4">
+                                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Select Items</h2>
+                                <div className="flex flex-col gap-3">
+                                    {/* Row 1: Main Categories */}
+                                    <div className="flex gap-2 overflow-x-auto pb-1">
+                                        {['KOT', 'BOT'].map(cat => (
+                                            <button
+                                                key={cat}
+                                                onClick={() => setActiveMainCategory(cat)}
+                                                className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${activeMainCategory === cat
+                                                    ? 'bg-blue-600 text-white shadow-md'
+                                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                                    }`}
+                                            >
+                                                {cat}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Row 2: Shops */}
+                                    <div className="flex gap-2 overflow-x-auto pb-1">
+                                        {shops.map((shop) => (
+                                            <button
+                                                key={shop.id}
+                                                onClick={() => setActiveShop(shop.id)}
+                                                className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${activeShop === shop.id
+                                                    ? 'bg-purple-600 text-white shadow-md'
+                                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                                    }`}
+                                            >
+                                                {shop.name}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Row 3: Subcategories */}
+                                    {currentSubcategories.length > 0 && (
+                                        <div className="flex gap-2 overflow-x-auto pb-1">
+                                            {currentSubcategories.map((subcat) => (
+                                                <button
+                                                    key={subcat.id}
+                                                    onClick={() => setActiveSubcategory(subcat.id)}
+                                                    className={`px-3 py-1 text-sm rounded transition-all whitespace-nowrap ${activeSubcategory === subcat.id
+                                                        ? 'bg-green-600 text-white shadow-md'
+                                                        : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-500'
+                                                        }`}
+                                                >
+                                                    {subcat.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-
-                            {/* Subcategory filter tabs */}
-                            {currentSubcategories.length > 0 && (
-                                <div className="mb-4 flex flex-wrap gap-2">
-                                    <button
-                                        onClick={() => setActiveSubcategory(null)}
-                                        className={`px-3 py-1 text-sm rounded ${activeSubcategory === null
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
-                                            }`}
-                                    >
-                                        All
-                                    </button>
-                                    {currentSubcategories.map((subcat) => (
-                                        <button
-                                            key={subcat.id}
-                                            onClick={() => setActiveSubcategory(subcat.id)}
-                                            className={`px-3 py-1 text-sm rounded ${activeSubcategory === subcat.id
-                                                ? 'bg-green-600 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
-                                                }`}
-                                        >
-                                            {subcat.name}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
 
                             {loadingItems ? (
                                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">Loading items...</div>
                             ) : (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                    {/* Custom Item card inserted first */}
-                                    {/*<div*/}
-                                    {/*    onClick={openCustomModalForCreate}*/}
-                                    {/*    className="cursor-pointer flex flex-col items-center justify-center p-3 rounded-md border border-dashed border-gray-300 dark:border-gray-100 bg-gray-50 dark:bg-gray-700 hover:shadow-lg"*/}
-                                    {/*    title="Add Custom Item"*/}
-                                    {/*>*/}
-                                    {/*    <div className="text-2xl font-bold text-gray-700 dark:text-gray-200">＋</div>*/}
-                                    {/*    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-1">Custom Item</div>*/}
-                                    {/*</div>*/}
-
                                     {filteredItems.length === 0 ? (
                                         <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">No items in this category</div>
                                     ) : (
@@ -550,8 +555,6 @@ const TableOrderPage = () => {
                                 </button>
                             </div>
                         </div>
-
-
                     </div>
                 </div>
                 {/* Table Orders Section */}
@@ -649,40 +652,6 @@ const TableOrderPage = () => {
                     )}
                 </div>
             </div>
-
-            {/* Custom Item Modal */}
-            {/*{showCustomModal && (*/}
-            {/*    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">*/}
-            {/*        <div className="w-full max-w-md p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg">*/}
-            {/*            <div className="flex items-center justify-between mb-4">*/}
-            {/*                <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{editingCustomId ? 'Edit Custom Item' : 'Add Custom Item'}</h4>*/}
-            {/*                <button onClick={() => setShowCustomModal(false)} className="text-gray-600 dark:text-gray-300">✕</button>*/}
-            {/*            </div>*/}
-
-            {/*            <div className="space-y-3">*/}
-            {/*                <div>*/}
-            {/*                    <label className="block text-sm text-gray-700 dark:text-gray-200 mb-1">Name</label>*/}
-            {/*                    <input value={customName} onChange={(e) => setCustomName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" />*/}
-            {/*                </div>*/}
-
-            {/*                <div>*/}
-            {/*                    <label className="block text-sm text-gray-700 dark:text-gray-200 mb-1">Price (LKR)</label>*/}
-            {/*                    <input value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} type="number" min="0" step="0.01" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" />*/}
-            {/*                </div>*/}
-
-            {/*                <div>*/}
-            {/*                    <label className="block text-sm text-gray-700 dark:text-gray-200 mb-1">Quantity</label>*/}
-            {/*                    <input value={customQty} onChange={(e) => setCustomQty(e.target.value)} type="number" min="1" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" />*/}
-            {/*                </div>*/}
-
-            {/*                <div className="flex justify-end gap-2 mt-2">*/}
-            {/*                    <button onClick={() => setShowCustomModal(false)} className="px-3 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100">Cancel</button>*/}
-            {/*                    <button onClick={handleCustomSave} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">{editingCustomId ? 'Save' : 'Add'}</button>*/}
-            {/*                </div>*/}
-            {/*            </div>*/}
-            {/*        </div>*/}
-            {/*    </div>*/}
-            {/*)}*/}
 
             {/* Waiter PIN Modal */}
             {showWaiterPIN && (

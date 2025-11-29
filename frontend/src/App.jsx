@@ -16,6 +16,7 @@ import QuickBillPage from './components/QuickBillPage';
 import Layout from './components/layout/Layout';
 import PageTransition from './components/layout/PageTransition';
 import PrinterManagement from './components/PrinterManagement';
+import ShopManagement from './components/ShopManagement';
 import './index.css';
 
 function App() {
@@ -84,6 +85,16 @@ function App() {
                                                 <ProtectedRoute roles={['admin']}>
                                                     <PageTransition>
                                                         <PrinterManagement />
+                                                    </PageTransition>
+                                                </ProtectedRoute>
+                                            }
+                                        />
+                                        <Route
+                                            path="/admin/shops"
+                                            element={
+                                                <ProtectedRoute roles={['admin']}>
+                                                    <PageTransition>
+                                                        <ShopManagement />
                                                     </PageTransition>
                                                 </ProtectedRoute>
                                             }

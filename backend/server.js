@@ -41,6 +41,7 @@ app.use('/api/items', itemRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/subcategories', require('./routes/subcategoriesRoutes'));
+app.use('/api/shops', require('./routes/shopRoutes'));
 app.use('/api/printers', printerRoutes);
 app.use('/api/print', printRoutes);
 app.use('/api/kot-bot', require('./routes/kotBotRoutes'));   // KOT/BOT

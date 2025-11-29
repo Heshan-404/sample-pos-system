@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Package, Grid3x3, History, Zap, Users, Settings, Lock, LogOut } from "lucide-react";
+import { Package, Grid3x3, History, Zap, Users, Settings, Lock, LogOut, Store } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
 const adminItems = [
     { path: "/admin/users", label: "Users", icon: Users },
     { path: "/admin/item", label: "Items", icon: Package },
+    { path: "/admin/shops", label: "Shops", icon: Store },
     { path: "/admin/printers", label: "Printers", icon: Settings },
 ];
 
@@ -73,14 +74,14 @@ export default function BottomNav() {
                                 key={path}
                                 to={path}
                                 className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition-all duration-200 rounded-lg ${isActive(path)
-                                        ? "text-primary-600 dark:text-primary-400"
-                                        : "text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-300"
+                                    ? "text-primary-600 dark:text-primary-400"
+                                    : "text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-300"
                                     }`}
                             >
                                 <div
                                     className={`p-2 rounded-xl transition-all duration-200 ${isActive(path)
-                                            ? "bg-primary-100 dark:bg-primary-900/30"
-                                            : ""
+                                        ? "bg-primary-100 dark:bg-primary-900/30"
+                                        : ""
                                         }`}
                                 >
                                     <Icon className={`w-5 h-5 ${isActive(path) ? "scale-110" : ""}`} />
@@ -95,14 +96,14 @@ export default function BottomNav() {
                             key={path}
                             to={path}
                             className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition-all duration-200 rounded-lg ${isActive(path)
-                                    ? "text-primary-600 dark:text-primary-400"
-                                    : "text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-300"
+                                ? "text-primary-600 dark:text-primary-400"
+                                : "text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-300"
                                 }`}
                         >
                             <div
                                 className={`p-2 rounded-xl transition-all duration-200 ${isActive(path)
-                                        ? "bg-primary-100 dark:bg-primary-900/30"
-                                        : ""
+                                    ? "bg-primary-100 dark:bg-primary-900/30"
+                                    : ""
                                     }`}
                             >
                                 <Icon className={`w-5 h-5 ${isActive(path) ? "scale-110" : ""}`} />

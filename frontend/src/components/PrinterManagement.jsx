@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '../services/api';
+import api, { shopsAPI } from '../services/api';
 
 const PrinterManagement = () => {
     const [printers, setPrinters] = useState([]);
@@ -8,12 +8,15 @@ const PrinterManagement = () => {
     const [formData, setFormData] = useState({
         name: '',
         ip: '',
-        port: ''
+        port: '',
+        shopId: ''
     });
+    const [shops, setShops] = useState([]);
     const [editingId, setEditingId] = useState(null);
 
     useEffect(() => {
         fetchPrinters();
+        fetchShops();
     }, []);
 
     const fetchPrinters = async () => {
@@ -28,6 +31,17 @@ const PrinterManagement = () => {
             alert('Failed to fetch printers');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchShops = async () => {
+        try {
+            const response = await shopsAPI.getAll();
+            if (response.data.success) {
+                setShops(response.data.data);
+            }
+        } catch (error) {
+            console.error('Error fetching shops:', error);
         }
     };
 
@@ -66,7 +80,8 @@ const PrinterManagement = () => {
             name: printer.name,
             ip: printer.ip,
             port: printer.port,
-            isActive: printer.isActive
+            isActive: printer.isActive,
+            shopId: printer.shopId || ''
         });
         setEditingId(printer.id);
         setShowForm(true);
@@ -111,7 +126,7 @@ const PrinterManagement = () => {
     };
 
     const resetForm = () => {
-        setFormData({ name: '', ip: '', port: '' });
+        setFormData({ name: '', ip: '', port: '', shopId: '' });
         setEditingId(null);
         setShowForm(false);
     };
@@ -179,6 +194,23 @@ const PrinterManagement = () => {
                                     />
                                 </div>
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                                    Assigned Shop
+                                </label>
+                                <select
+                                    className="input-field"
+                                    value={formData.shopId}
+                                    onChange={(e) => setFormData({ ...formData, shopId: e.target.value })}
+                                >
+                                    <option value="">None (General Printer)</option>
+                                    {shops.map((shop) => (
+                                        <option key={shop.id} value={shop.id}>
+                                            {shop.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                             <div className="flex gap-3">
                                 <button
                                     type="submit"
@@ -230,6 +262,9 @@ const PrinterManagement = () => {
                                             Port
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                            Shop
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                             Status
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -254,12 +289,15 @@ const PrinterManagement = () => {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                                                 {printer.port}
                                             </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                                                {printer.shopName || '-'}
+                                            </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <button
                                                     onClick={() => handleToggleActive(printer)}
                                                     className={`px-3 py-1 rounded-full text-xs font-semibold ${printer.isActive
-                                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                                                         }`}
                                                 >
                                                     {printer.isActive ? '● Active' : '○ Inactive'}
@@ -298,7 +336,7 @@ const PrinterManagement = () => {
                         <li>• Default port for most ESC/POS printers is 9100</li>
                         <li>• The print server must be running to print receipts</li>
                         <li>• Receipts will automatically print when bills are finalized</li>
-                        <br/>
+                        <br />
                         Default Print Credential
                         <li>• ip: 192.168.224.61 </li>
                         <li>•  port : 9100 </li>

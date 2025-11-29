@@ -93,7 +93,7 @@ class UserController {
     async updateUser(req, res) {
         try {
             const { id } = req.params;
-            const { username, password, role, full_name, pin, is_active } = req.body;
+            const { username, password, role, full_name, pin, is_active, adminPassword } = req.body;
 
             // Check if user exists
             const existingUser = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
@@ -103,6 +103,27 @@ class UserController {
                     success: false,
                     error: 'User not found'
                 });
+            }
+
+            // If updating PIN, verify admin password
+            if (pin !== undefined && pin !== null && pin !== '') {
+                if (!adminPassword) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Admin password is required to update PIN'
+                    });
+                }
+
+                // Verify admin password (get from req.user if authenticated)
+                const adminUser = db.prepare('SELECT password FROM users WHERE id = ?').get(req.user.id);
+                const isValidAdminPassword = await bcrypt.compare(adminPassword, adminUser.password);
+
+                if (!isValidAdminPassword) {
+                    return res.status(401).json({
+                        success: false,
+                        error: 'Invalid admin password'
+                    });
+                }
             }
 
             // Build update query dynamically
@@ -156,7 +177,7 @@ class UserController {
             `).run(...values);
 
             const updatedUser = db.prepare(`
-                SELECT id, username, role, full_name, pin, is_active, created_at, updated_at
+                SELECT id, username, role, full_name, is_active, created_at, updated_at
                 FROM users WHERE id = ?
             `).get(id);
 
