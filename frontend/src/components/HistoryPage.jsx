@@ -37,9 +37,17 @@ const HistoryPage = () => {
         }
     };
 
-    const handleViewDetails = (bill) => {
-        setSelectedBill(bill);
-        setShowDetailModal(true);
+    const handleViewDetails = async (bill) => {
+        try {
+            const response = await historyAPI.getById(bill.id);
+            if (response.data.success) {
+                setSelectedBill(response.data.data);
+                setShowDetailModal(true);
+            }
+        } catch (error) {
+            console.error('Error fetching bill details:', error);
+            alert('Failed to fetch bill details');
+        }
     };
 
     const closeModal = () => {
@@ -190,7 +198,7 @@ const HistoryPage = () => {
                                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                                     {history.map((bill) => (
                                         <tr key={bill.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                            <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">#{bill.orderId}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">#{bill.id}</td>
                                             <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Table {bill.tableNumber}</td>
                                             <td className="px-4 py-3 text-sm font-semibold text-green-600 dark:text-green-400">
                                                 ${bill.finalAmount.toFixed(2)}
@@ -230,7 +238,7 @@ const HistoryPage = () => {
                             {/* Header */}
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                    Order #{selectedBill.orderId} - Table {selectedBill.tableNumber}
+                                    Order #{selectedBill.id} - Table {selectedBill.tableNumber}
                                 </h2>
                                 <button
                                     onClick={closeModal}
@@ -245,28 +253,62 @@ const HistoryPage = () => {
                             {/* Items */}
                             <div className="mb-6">
                                 <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Items</h3>
-                                <div className="space-y-2">
-                                    {selectedBill.items.map((item, index) => (
-                                        <div key={index} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                            <div>
-                                                <p className="font-medium text-gray-800 dark:text-gray-200">{item.itemName}</p>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                    ${item.itemPrice.toFixed(2)} × {item.quantity}
-                                                </p>
+                                <div className="space-y-4">
+                                    {(() => {
+                                        const groups = {};
+                                        selectedBill.items.forEach(item => {
+                                            const batchId = item.batch_id || 'legacy';
+                                            if (!groups[batchId]) {
+                                                groups[batchId] = {
+                                                    batchId,
+                                                    addedBy: item.added_by_name || 'Unknown',
+                                                    addedAt: item.added_at,
+                                                    items: []
+                                                };
+                                            }
+                                            groups[batchId].items.push(item);
+                                        });
+
+                                        const sortedGroups = Object.values(groups).sort((a, b) => {
+                                            if (a.batchId === 'legacy') return 1;
+                                            if (b.batchId === 'legacy') return -1;
+                                            return new Date(a.addedAt) - new Date(b.addedAt);
+                                        });
+
+                                        return sortedGroups.map(group => (
+                                            <div key={group.batchId} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                                                {group.batchId !== 'legacy' && (
+                                                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-2 border-b border-gray-200 dark:border-gray-600 pb-1">
+                                                        <span className="font-bold text-blue-600 dark:text-blue-400">{group.addedBy}</span>
+                                                        <span>{new Date(group.addedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    </div>
+                                                )}
+                                                <div className="space-y-2">
+                                                    {group.items.map((item, index) => (
+                                                        <div key={index} className="flex justify-between items-center">
+                                                            <div>
+                                                                <p className="font-medium text-gray-800 dark:text-gray-200">{item.itemName}</p>
+                                                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                                    ${item.itemPrice.toFixed(2)} × {item.quantity}
+                                                                </p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="font-bold text-gray-800 dark:text-gray-200">
+                                                                    ${item.subtotal.toFixed(2)}
+                                                                </p>
+                                                                <span className={`text-xs px-2 py-1 rounded-full ${item.itemCategory === 'KOT'
+                                                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                                                                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                                                    }`}>
+                                                                    {item.itemCategory}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="font-bold text-gray-800 dark:text-gray-200">
-                                                    ${item.subtotal.toFixed(2)}
-                                                </p>
-                                                <span className={`text-xs px-2 py-1 rounded-full ${item.itemCategory === 'KOT'
-                                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                                                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                                    }`}>
-                                                    {item.itemCategory}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        ));
+                                    })()}
                                 </div>
                             </div>
 

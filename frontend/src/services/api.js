@@ -59,7 +59,8 @@ export const ordersAPI = {
     getTableOrder: (tableNumber) => api.get(`/orders/${tableNumber}`),
     updateItemQuantity: (orderItemId, quantity) => api.put(`/orders/update-item/${orderItemId}`, { quantity }),
     removeItem: (orderItemId) => api.delete(`/orders/remove-item/${orderItemId}`),
-    finishOrder: (data) => api.post('/orders/finish', data)
+    finishOrder: (data) => api.post('/orders/finish', data),
+    finishPartialOrder: (data) => api.post('/orders/finish-partial', data)
 };
 
 // History API

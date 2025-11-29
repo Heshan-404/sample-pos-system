@@ -27,36 +27,46 @@ class OrderService {
     }
 
     // Add item to order
-    addItemToOrder(tableNumber, itemId, quantity) {
-        const addItem = db.transaction((tableNum, itemId, qty) => {
+    addItemToOrder(tableNumber, itemId, quantity, userId = null, userName = null, batchId = null) {
+        const addItem = db.transaction((tableNum, itemId, qty, uId, uName, bId) => {
             // Get or create open order
             const order = this.getOrCreateOpenOrder(tableNum);
 
-            // Check if item already exists in the order
-            const existingItem = db.prepare(`
-        SELECT * FROM order_items 
-        WHERE orderId = ? AND itemId = ?
-      `).get(order.id, itemId);
+            // Check if item already exists in the order AND batch
+            let existingItem;
+            if (bId) {
+                existingItem = db.prepare(`
+                    SELECT * FROM order_items 
+                    WHERE orderId = ? AND itemId = ? AND batch_id = ?
+                `).get(order.id, itemId, bId);
+            } else {
+                // Fallback for legacy/single item add without batch
+                existingItem = db.prepare(`
+                    SELECT * FROM order_items 
+                    WHERE orderId = ? AND itemId = ? AND batch_id IS NULL
+                `).get(order.id, itemId);
+            }
 
             if (existingItem) {
-                // Update quantity if item exists
+                // Update quantity if item exists in same batch
                 db.prepare(`
-          UPDATE order_items 
-          SET quantity = quantity + ?
-          WHERE orderId = ? AND itemId = ?
-        `).run(qty, order.id, itemId);
+                  UPDATE order_items 
+                  SET quantity = quantity + ?
+                  WHERE id = ?
+                `).run(qty, existingItem.id);
             } else {
                 // Insert new item
+                const addedAt = new Date().toISOString();
                 db.prepare(`
-          INSERT INTO order_items (orderId, itemId, quantity)
-          VALUES (?, ?, ?)
-        `).run(order.id, itemId, qty);
+                  INSERT INTO order_items (orderId, itemId, quantity, added_by_user_id, added_by_name, batch_id, added_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?)
+                `).run(order.id, itemId, qty, uId, uName, bId, addedAt);
             }
 
             return order;
         });
 
-        return addItem(tableNumber, itemId, quantity);
+        return addItem(tableNumber, itemId, quantity, userId, userName, batchId);
     }
 
     // Get order details for a table
@@ -77,6 +87,9 @@ class OrderService {
       SELECT 
         oi.id,
         oi.quantity,
+        oi.added_by_name,
+        oi.added_at,
+        oi.batch_id,
         i.id as itemId,
         i.name,
         i.price,
@@ -85,6 +98,7 @@ class OrderService {
       FROM order_items oi
       JOIN items i ON oi.itemId = i.id
       WHERE oi.orderId = ?
+      ORDER BY oi.added_at ASC
     `).all(order.id);
 
         // Calculate total
@@ -97,77 +111,95 @@ class OrderService {
         };
     }
 
-    // Finish order and generate bill
-    finishOrder(tableNumber, discount = 0, serviceCharge = false, paymentMethod = 'CASH', additionalItems = '') {
-        const finish = db.transaction((tableNum, disc, svcCharge, payMethod, addItems) => {
+    // Finish partial order (or full order if all items selected)
+    finishPartialOrder(tableNumber, itemsToPay, discount = 0, serviceCharge = false, paymentMethod = 'CASH', additionalItems = '') {
+        const finish = db.transaction((tableNum, itemsPay, disc, svcCharge, payMethod, addItems) => {
             // Get the open order
             const orderData = this.getTableOrder(tableNum);
+            if (!orderData) throw new Error('No open order found for this table');
 
-            if (!orderData) {
-                throw new Error('No open order found for this table');
+            // Validate items and calculate subtotal
+            let subtotal = 0;
+            const itemsToProcess = [];
+
+            for (const payItem of itemsPay) {
+                const originalItem = orderData.items.find(i => i.id === payItem.orderItemId);
+                if (!originalItem) throw new Error(`Item not found in order: ${payItem.orderItemId}`);
+                if (payItem.quantity > originalItem.quantity) throw new Error(`Invalid quantity for item: ${originalItem.name}`);
+
+                const itemSubtotal = originalItem.price * payItem.quantity;
+                subtotal += itemSubtotal;
+
+                itemsToProcess.push({
+                    ...originalItem,
+                    payQuantity: payItem.quantity,
+                    paySubtotal: itemSubtotal
+                });
             }
 
             // Calculate bill amounts
-            const subtotal = orderData.total;
             const serviceChargeAmount = svcCharge ? subtotal * 0.10 : 0;
             const finalAmount = subtotal + serviceChargeAmount - disc;
             const closedAt = new Date().toISOString();
 
             // Save to orders_history
             const historyStmt = db.prepare(`
-        INSERT INTO orders_history (
-          orderId, tableNumber, subtotal, discount, 
-          serviceCharge, serviceChargeAmount, finalAmount, closed_at,
-          paymentMethod, additionalItems
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
+                INSERT INTO orders_history (
+                  orderId, tableNumber, subtotal, discount, 
+                  serviceCharge, serviceChargeAmount, finalAmount, closed_at,
+                  paymentMethod, additionalItems
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
 
             const historyResult = historyStmt.run(
-                orderData.id,
-                tableNum,
-                subtotal,
-                disc,
-                svcCharge ? 1 : 0,
-                serviceChargeAmount,
-                finalAmount,
-                closedAt,
-                payMethod,
-                addItems
+                orderData.id, tableNum, subtotal, disc, svcCharge ? 1 : 0,
+                serviceChargeAmount, finalAmount, closedAt, payMethod, addItems
             );
-
             const historyId = historyResult.lastInsertRowid;
 
             // Save items to orders_history_items
             const historyItemStmt = db.prepare(`
-        INSERT INTO orders_history_items (
-          historyId, itemName, itemPrice, itemCategory, quantity, subtotal
-        ) VALUES (?, ?, ?, ?, ?, ?)
-      `);
+                INSERT INTO orders_history_items (
+                  historyId, itemName, itemPrice, itemCategory, quantity, subtotal,
+                  added_by_name, added_at, batch_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
 
-            for (const item of orderData.items) {
+            const updateQtyStmt = db.prepare("UPDATE order_items SET quantity = quantity - ? WHERE id = ?");
+            const deleteItemStmt = db.prepare("DELETE FROM order_items WHERE id = ?");
+
+            for (const item of itemsToProcess) {
+                // Add to history
                 historyItemStmt.run(
-                    historyId,
-                    item.name,
-                    item.price,
-                    item.category,
-                    item.quantity,
-                    item.subtotal
+                    historyId, item.name, item.price, item.category,
+                    item.payQuantity, item.paySubtotal,
+                    item.added_by_name, item.added_at, item.batch_id
                 );
+
+                // Update original order
+                if (item.payQuantity === item.quantity) {
+                    deleteItemStmt.run(item.id);
+                } else {
+                    updateQtyStmt.run(item.payQuantity, item.id);
+                }
             }
 
-            // Close the order
-            db.prepare(`
-        UPDATE orders 
-        SET status = 'closed', closed_at = ?
-        WHERE id = ?
-      `).run(closedAt, orderData.id);
+            // Check if order is empty
+            const remainingItems = db.prepare("SELECT count(*) as count FROM order_items WHERE orderId = ?").get(orderData.id);
+            if (remainingItems.count === 0) {
+                db.prepare("UPDATE orders SET status = 'closed', closed_at = ? WHERE id = ?").run(closedAt, orderData.id);
+            }
 
-            // Return final bill
             return {
                 orderId: orderData.id,
                 historyId: historyId,
                 tableNumber: tableNum,
-                items: orderData.items,
+                items: itemsToProcess.map(i => ({
+                    name: i.name,
+                    quantity: i.payQuantity,
+                    subtotal: i.paySubtotal,
+                    price: i.price
+                })),
                 subtotal: parseFloat(subtotal.toFixed(2)),
                 serviceCharge: svcCharge,
                 serviceChargeAmount: parseFloat(serviceChargeAmount.toFixed(2)),
@@ -177,7 +209,20 @@ class OrderService {
             };
         });
 
-        return finish(tableNumber, discount, serviceCharge, paymentMethod, additionalItems);
+        return finish(tableNumber, itemsToPay, discount, serviceCharge, paymentMethod, additionalItems);
+    }
+
+    // Finish full order (wrapper for finishPartialOrder)
+    finishOrder(tableNumber, discount = 0, serviceCharge = false, paymentMethod = 'CASH', additionalItems = '') {
+        const orderData = this.getTableOrder(tableNumber);
+        if (!orderData) throw new Error('No open order found for this table');
+
+        const itemsToPay = orderData.items.map(i => ({
+            orderItemId: i.id,
+            quantity: i.quantity
+        }));
+
+        return this.finishPartialOrder(tableNumber, itemsToPay, discount, serviceCharge, paymentMethod, additionalItems);
     }
 
     // Update single order item quantity

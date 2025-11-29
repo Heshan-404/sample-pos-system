@@ -13,8 +13,8 @@ class OrderController {
         }
 
         try {
-            const { tableNumber, itemId, quantity } = req.body;
-            const order = orderService.addItemToOrder(tableNumber, itemId, quantity);
+            const { tableNumber, itemId, quantity, userId, userName, batchId } = req.body;
+            const order = orderService.addItemToOrder(tableNumber, itemId, quantity, userId, userName, batchId);
 
             res.json({
                 success: true,
@@ -76,6 +76,47 @@ class OrderController {
 
             const bill = orderService.finishOrder(
                 tableNumber,
+                discount,
+                serviceCharge,
+                paymentMethod,
+                additionalItems
+            );
+
+            res.json({
+                success: true,
+                data: bill
+            });
+        } catch (error) {
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    // POST /orders/finish-partial - Finish partial order
+    async finishPartialOrder(req, res) {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                errors: errors.array()
+            });
+        }
+
+        try {
+            const {
+                tableNumber,
+                itemsToPay,
+                discount = 0,
+                serviceCharge = false,
+                paymentMethod = 'CASH',
+                additionalItems = ''
+            } = req.body;
+
+            const bill = orderService.finishPartialOrder(
+                tableNumber,
+                itemsToPay,
                 discount,
                 serviceCharge,
                 paymentMethod,

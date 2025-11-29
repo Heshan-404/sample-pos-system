@@ -52,5 +52,6 @@ router.get('/:tableNumber', orderController.getTableOrder.bind(orderController))
 router.put('/update-item/:orderItemId', orderController.updateOrderItemQuantity.bind(orderController));
 router.delete('/remove-item/:orderItemId', orderController.removeOrderItem.bind(orderController));
 router.post('/finish', finishOrderValidation, orderController.finishOrder.bind(orderController));
+router.post('/finish-partial', finishOrderValidation, orderController.finishPartialOrder.bind(orderController));
 
 module.exports = router;

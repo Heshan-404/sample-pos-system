@@ -130,6 +130,9 @@ const TableOrderPage = () => {
                     category: it.category,
                     quantity: Number(it.quantity),
                     subtotal: Number(it.subtotal),
+                    added_by_name: it.added_by_name,
+                    added_at: it.added_at,
+                    batch_id: it.batch_id,
                 }));
                 setEditableOrderItems(edited);
             } else {
@@ -215,28 +218,37 @@ const TableOrderPage = () => {
     const submitCartToOrder = async () => {
         if (!cart.length) return alert('Cart is empty');
         setSubmittingCart(true);
+
+        // Generate batch ID
+        const batchId = `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        // Determine user info
+        const currentUser = user || waiter;
+        const userId = currentUser?.id;
+        const userName = currentUser?.full_name || currentUser?.username || currentUser?.name || (user ? 'Admin/Cashier' : 'Waiter');
+
         try {
             // Attempt to send each cart item to backend.
-            // For custom items, we include a "custom" flag and send name & price in payload.
-            // Backend must support these fields. If not, it may fail — we handle errors per item.
             const results = await Promise.all(
                 cart.map((ci) => {
-                    if (ci.isCustom) {
-                        // payload includes custom fields — adapt if your backend expects different keys
-                        return ordersAPI.addItem({
-                            tableNumber: parseInt(tableNumber, 10),
-                            itemId: 19,
-                            quantity: parseInt(ci.quantity, 10),
-                            custom: true,
-                            name: ci.name,
-                            price: Number(ci.price),
-                        });
-                    }
-                    return ordersAPI.addItem({
+                    const payload = {
                         tableNumber: parseInt(tableNumber, 10),
-                        itemId: ci.id,
                         quantity: parseInt(ci.quantity, 10),
-                    });
+                        userId,
+                        userName,
+                        batchId
+                    };
+
+                    if (ci.isCustom) {
+                        payload.itemId = 19;
+                        payload.custom = true;
+                        payload.name = ci.name;
+                        payload.price = Number(ci.price);
+                    } else {
+                        payload.itemId = ci.id;
+                    }
+
+                    return ordersAPI.addItem(payload);
                 })
             );
 
@@ -309,6 +321,44 @@ const TableOrderPage = () => {
 
     // helper to render price with 2 decimals
     const fmt = (v) => Number(v).toFixed(2);
+
+    // Group orders by batch
+    const groupedOrders = useMemo(() => {
+        const groups = {};
+        editableOrderItems.forEach(item => {
+            const batchId = item.batch_id || 'legacy';
+            if (!groups[batchId]) {
+                groups[batchId] = {
+                    batchId,
+                    addedBy: item.added_by_name || 'Unknown',
+                    addedAt: item.added_at,
+                    items: []
+                };
+            }
+            groups[batchId].items.push(item);
+        });
+
+        // Sort by time desc (newest first)
+        return Object.values(groups).sort((a, b) => {
+            if (a.batchId === 'legacy') return 1;
+            if (b.batchId === 'legacy') return -1;
+            return new Date(b.addedAt) - new Date(a.addedAt);
+        });
+    }, [editableOrderItems]);
+
+    // Consolidated items for total view
+    const consolidatedItems = useMemo(() => {
+        const map = {};
+        editableOrderItems.forEach(item => {
+            // Use name as key for custom items or items with same ID but different batches
+            const key = item.itemId;
+            if (!map[key]) {
+                map[key] = { ...item, quantity: 0 };
+            }
+            map[key].quantity += item.quantity;
+        });
+        return Object.values(map);
+    }, [editableOrderItems]);
 
     // -- Custom Item Modal handlers --
     const openCustomModalForCreate = () => {
@@ -501,72 +551,97 @@ const TableOrderPage = () => {
 
                     </div>
                 </div>
-                {/* Current Order Card */}
-                <div className=" mt-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Current Order</h3>
+                {/* Table Orders Section */}
+                <div className="mt-8 space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Table Orders</h3>
 
                     {loadingOrder ? (
                         <div className="text-gray-600 dark:text-gray-300">Loading...</div>
                     ) : editableOrderItems.length === 0 ? (
-                        <div className="text-center py-6 text-gray-500 dark:text-gray-400">No items yet</div>
+                        <div className="text-center py-6 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">No items yet</div>
                     ) : (
-                        <div className="space-y-3 max-h-[36vh] overflow-auto">
-                            {editableOrderItems.map((oi) => {
-                                const canEdit = user && (user.role === 'admin' || user.role === 'cashier');
-                                return (
-                                    <div key={oi.id} className="flex items-center justify-between p-2 rounded bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600">
-                                        <div>
-                                            <div className="font-semibold text-gray-900 dark:text-gray-100">{truncate(oi.name)}</div>
-                                            <div className="text-xs text-gray-600 dark:text-gray-300">LKR {fmt(oi.price)} × {oi.quantity}</div>
-                                        </div>
-
-                                        {canEdit ? (
-                                            <div className="flex flex-col items-end">
-                                                <div className="flex items-center gap-2">
-                                                    <button onClick={() => decEditableItem(oi.id)} className="px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded text-gray-900 dark:text-gray-100">-</button>
-                                                    <input type="number" min="0" value={oi.quantity} onChange={(e) => setEditableItemQty(oi.id, e.target.value)} className="w-16 text-center border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded" />
-                                                    <button onClick={() => incEditableItem(oi.id)} className="px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded text-gray-900 dark:text-gray-100">+</button>
-                                                </div>
-                                                <button onClick={() => handleLocalDelete(oi.id)} className="text-red-600 dark:text-red-400 text-xs mt-2">Delete</button>
-                                            </div>
-                                        ) : (
-                                            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">Qty: {oi.quantity}</div>
-                                        )}
+                        <>
+                            {/* Grouped Orders */}
+                            {groupedOrders.map((group) => (
+                                <div key={group.batchId} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
+                                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 flex justify-between items-center border-b border-gray-100 dark:border-gray-700 pb-2">
+                                        <span className="font-bold text-blue-600 dark:text-blue-400">{group.addedBy}</span>
+                                        <span className="text-xs">{group.addedAt ? new Date(group.addedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                                     </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                                    <div className="space-y-3">
+                                        {group.items.map((oi) => {
+                                            const canEdit = user && (user.role === 'admin' || user.role === 'cashier');
+                                            return (
+                                                <div key={oi.id} className="flex items-center justify-between text-sm">
+                                                    <div>
+                                                        <div className="font-medium text-gray-900 dark:text-gray-100">{truncate(oi.name)}</div>
+                                                        <div className="text-xs text-gray-500">LKR {fmt(oi.price)}</div>
+                                                    </div>
 
-                    <div className="border-t border-gray-200 dark:border-gray-700 mt-3 pt-3 flex justify-between font-bold text-gray-900 dark:text-gray-100">
-                        <span>Order Total</span>
-                        <span>LKR {fmt(editableOrderTotal)}</span>
-                    </div>
+                                                    {canEdit ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <button onClick={() => decEditableItem(oi.id)} className="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded text-gray-900 dark:text-gray-100">-</button>
+                                                            <input type="number" min="0" value={oi.quantity} onChange={(e) => setEditableItemQty(oi.id, e.target.value)} className="w-10 text-center border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded text-xs py-1" />
+                                                            <button onClick={() => incEditableItem(oi.id)} className="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded text-gray-900 dark:text-gray-100">+</button>
+                                                            <button onClick={() => handleLocalDelete(oi.id)} className="text-red-500 ml-1">✕</button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="font-bold text-gray-700 dark:text-gray-300">x{oi.quantity}</div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
 
-                    {user && (user.role === 'admin' || user.role === 'cashier') ? (
-                        <button onClick={() => navigate(`/billing?table=${tableNumber}`)} className="w-full py-2 rounded mt-3 bg-green-600 hover:bg-green-700 text-white">Go To Billing</button>
-                    ) : (
-                        <button
-                            onClick={async () => {
-                                try {
-                                    const response = await fetch(`http://localhost:5000/api/print/draft-bill/${tableNumber}`);
-                                    const blob = await response.blob();
-                                    const url = window.URL.createObjectURL(blob);
-                                    const link = document.createElement('a');
-                                    link.href = url;
-                                    link.download = `draft-bill-table-${tableNumber}.pdf`;
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    link.remove();
-                                    window.URL.revokeObjectURL(url);
-                                } catch (error) {
-                                    alert('Failed to generate draft bill');
-                                }
-                            }}
-                            className="w-full py-2 rounded mt-3 bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                            📄 Get Draft Bill
-                        </button>
+                            {/* Consolidated Summary */}
+                            <div className="bg-blue-50 dark:bg-gray-800 border-2 border-blue-200 dark:border-blue-900 rounded-lg p-4 shadow-sm">
+                                <h4 className="font-bold text-gray-900 dark:text-gray-100 mb-3 border-b border-blue-200 dark:border-blue-900 pb-2">Total Summary</h4>
+                                <div className="space-y-2 mb-4">
+                                    {consolidatedItems.map((item) => (
+                                        <div key={item.itemId} className="flex justify-between text-sm">
+                                            <span className="text-gray-800 dark:text-gray-200">{item.name}</span>
+                                            <span className="font-bold text-gray-900 dark:text-gray-100">x{item.quantity}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="border-t border-blue-200 dark:border-blue-900 pt-3 flex justify-between font-bold text-lg text-gray-900 dark:text-gray-100">
+                                    <span>Total</span>
+                                    <span>LKR {fmt(editableOrderTotal)}</span>
+                                </div>
+
+                                {user && (user.role === 'admin' || user.role === 'cashier') ? (
+                                    <button onClick={() => navigate(`/billing?table=${tableNumber}`)} className="w-full py-3 rounded-lg mt-4 bg-green-600 hover:bg-green-700 text-white font-bold shadow-lg transform active:scale-95 transition-all">
+                                        Go To Billing
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                const response = await fetch(`http://localhost:5000/api/print/draft-bill/${tableNumber}`);
+                                                const blob = await response.blob();
+                                                const url = window.URL.createObjectURL(blob);
+                                                const link = document.createElement('a');
+                                                link.href = url;
+                                                link.download = `draft-bill-table-${tableNumber}.pdf`;
+                                                document.body.appendChild(link);
+                                                link.click();
+                                                link.remove();
+                                                window.URL.revokeObjectURL(url);
+                                            } catch (error) {
+                                                alert('Failed to generate draft bill');
+                                            }
+                                        }}
+                                        className="w-full py-3 rounded-lg mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                        Get Draft Bill
+                                    </button>
+                                )}
+                            </div>
+                        </>
                     )}
                 </div>
             </div>

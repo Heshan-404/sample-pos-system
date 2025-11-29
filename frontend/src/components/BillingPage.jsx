@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ordersAPI, printAPI } from '../services/api';
 import ConfirmModal from './ConfirmModal';
@@ -18,7 +18,8 @@ const BillingPage = () => {
     const [showConfirm, setShowConfirm] = useState(false);
     const [printing, setPrinting] = useState(false);
 
-    const tableNumbers = Array.from({ length: 30 }, (_, i) => i + 1);
+    const [splitBillMode, setSplitBillMode] = useState(false);
+    const [selectedItems, setSelectedItems] = useState({}); // { groupKey: quantity }
 
     useEffect(() => {
         fetchTableOrder();
@@ -33,6 +34,8 @@ const BillingPage = () => {
                 setBill(null);
                 setDiscount(0);
                 setServiceCharge(false);
+                setSplitBillMode(false);
+                setSelectedItems({});
             }
         } catch (error) {
             console.error('Error fetching order:', error);
@@ -41,9 +44,58 @@ const BillingPage = () => {
         }
     };
 
+    // Consolidate items for display and billing
+    const consolidatedItems = useMemo(() => {
+        if (!currentOrder?.items) return [];
+        const map = new Map();
+        currentOrder.items.forEach(item => {
+            const key = `${item.itemId}_${item.price}`;
+            if (!map.has(key)) {
+                map.set(key, {
+                    ...item,
+                    groupKey: key,
+                    quantity: 0,
+                    subtotal: 0,
+                    originalItems: []
+                });
+            }
+            const entry = map.get(key);
+            entry.quantity += item.quantity;
+            entry.subtotal += item.subtotal;
+            entry.originalItems.push(item);
+        });
+        return Array.from(map.values());
+    }, [currentOrder]);
+
+    const toggleSplitMode = () => {
+        setSplitBillMode(!splitBillMode);
+        setSelectedItems({});
+    };
+
+    const handleItemSelection = (groupKey, maxQty, newQty) => {
+        const qty = Math.max(0, Math.min(maxQty, parseInt(newQty) || 0));
+        setSelectedItems(prev => ({
+            ...prev,
+            [groupKey]: qty
+        }));
+    };
+
     const calculateBill = () => {
         if (!currentOrder) return null;
-        const subtotal = currentOrder.total;
+
+        let subtotal = 0;
+
+        if (splitBillMode) {
+            consolidatedItems.forEach(item => {
+                const qty = selectedItems[item.groupKey] || 0;
+                if (qty > 0) {
+                    subtotal += item.price * qty;
+                }
+            });
+        } else {
+            subtotal = currentOrder.total;
+        }
+
         const serviceChargeAmount = serviceCharge ? subtotal * 0.10 : 0;
         const finalAmount = subtotal + serviceChargeAmount - parseFloat(discount || 0);
         return {
@@ -57,13 +109,56 @@ const BillingPage = () => {
     const handleFinishBill = async () => {
         setLoading(true);
         try {
-            const response = await ordersAPI.finishOrder({
-                tableNumber: selectedTable,
-                discount: parseFloat(discount || 0),
-                serviceCharge: serviceCharge,
-                paymentMethod: paymentMethod,
-                additionalItems: additionalItems,
-            });
+            let response;
+
+            if (splitBillMode) {
+                const itemsToPay = [];
+
+                // Distribute selected quantities to original items
+                Object.entries(selectedItems).forEach(([groupKey, qty]) => {
+                    if (qty <= 0) return;
+
+                    const group = consolidatedItems.find(i => i.groupKey === groupKey);
+                    if (!group) return;
+
+                    let remainingQty = qty;
+                    // Distribute FIFO
+                    for (const originalItem of group.originalItems) {
+                        if (remainingQty <= 0) break;
+
+                        const take = Math.min(remainingQty, originalItem.quantity);
+                        itemsToPay.push({
+                            orderItemId: originalItem.id,
+                            quantity: take
+                        });
+                        remainingQty -= take;
+                    }
+                });
+
+                if (itemsToPay.length === 0) {
+                    alert("Please select items to pay");
+                    setLoading(false);
+                    return;
+                }
+
+                response = await ordersAPI.finishPartialOrder({
+                    tableNumber: selectedTable,
+                    itemsToPay,
+                    discount: parseFloat(discount || 0),
+                    serviceCharge: serviceCharge,
+                    paymentMethod: paymentMethod,
+                    additionalItems: additionalItems,
+                });
+            } else {
+                response = await ordersAPI.finishOrder({
+                    tableNumber: selectedTable,
+                    discount: parseFloat(discount || 0),
+                    serviceCharge: serviceCharge,
+                    paymentMethod: paymentMethod,
+                    additionalItems: additionalItems,
+                });
+            }
+
             if (response.data.success) {
                 setBill(response.data.data);
                 setCurrentOrder(null);
@@ -80,8 +175,6 @@ const BillingPage = () => {
                         console.log('Receipt printed successfully');
                     } catch (printError) {
                         console.error('Auto-print failed:', printError);
-                        // Don't show error - print button will still be available
-                        // User can print manually if auto-print fails
                     }
                 }
             }
@@ -148,23 +241,6 @@ const BillingPage = () => {
     return (
         <div className="container mx-auto px-4 py-8">
             <div className="max-w-4xl mx-auto">
-
-
-                {/*<div className="card mb-8">*/}
-                {/*    <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">*/}
-                {/*        Select Table*/}
-                {/*    </h2>*/}
-                {/*    <select*/}
-                {/*        className="input-field max-w-xs"*/}
-                {/*        value={selectedTable}*/}
-                {/*        onChange={(e) => setSelectedTable(parseInt(e.target.value))}*/}
-                {/*    >*/}
-                {/*        {tableNumbers.map((num) => (*/}
-                {/*            <option key={num} value={num}>Table {num}</option>*/}
-                {/*        ))}*/}
-                {/*    </select>*/}
-                {/*</div>*/}
-
                 {bill ? (
                     <div className="card bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900 dark:to-green-800">
                         <div className="text-center mb-6">
@@ -218,10 +294,21 @@ const BillingPage = () => {
                                 {printing ? '📄 Generating...' : '📄 Download PDF'}
                             </button>
                             <button
-                                onClick={() => navigate('/tables')}
+                                onClick={() => {
+                                    setBill(null);
+                                    fetchTableOrder();
+                                }}
                                 className="btn-secondary text-lg py-3"
                             >
-                                New Bill
+                                Back to Table
+                            </button>
+                        </div>
+                        <div className="mt-4">
+                            <button
+                                onClick={() => navigate('/tables')}
+                                className="w-full py-3 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 underline"
+                            >
+                                Go to Table Selection
                             </button>
                         </div>
                     </div>
@@ -235,16 +322,53 @@ const BillingPage = () => {
                     </div>
                 ) : (
                     <div className="card">
-                        <h2 className="text-2xl font-semibold mb-6">Bill for Table {selectedTable}</h2>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-semibold">Bill for Table {selectedTable}</h2>
+                            <button
+                                onClick={toggleSplitMode}
+                                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${splitBillMode
+                                    ? 'bg-purple-600 text-white hover:bg-purple-700'
+                                    : 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200'
+                                    }`}
+                            >
+                                {splitBillMode ? 'Cancel Split' : 'Split Bill'}
+                            </button>
+                        </div>
+
                         <div className="mb-6 space-y-3">
                             <h3 className="text-lg font-semibold">Order Items</h3>
-                            {currentOrder.items.map((item) => (
-                                <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                    <div>
+                            {consolidatedItems.map((item) => (
+                                <div key={item.groupKey} className={`flex justify-between items-center p-3 rounded-lg border ${splitBillMode && (selectedItems[item.groupKey] || 0) > 0
+                                    ? 'bg-purple-50 border-purple-200 dark:bg-purple-900/20 dark:border-purple-800'
+                                    : 'bg-gray-50 border-gray-100 dark:bg-gray-700 dark:border-gray-600'
+                                    }`}>
+                                    <div className="flex-1">
                                         <p className="font-medium">{item.name}</p>
-                                        <p className="text-sm text-amber-300">LKR {item.price.toFixed(2)} × {item.quantity}</p>
+                                        <p className="text-sm text-amber-600 dark:text-amber-400">LKR {item.price.toFixed(2)} × {item.quantity}</p>
                                     </div>
-                                    <p className="font-bold">LKR {item.subtotal.toFixed(2)}</p>
+
+                                    {splitBillMode ? (
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 px-2 py-1">
+                                                <span className="text-xs text-gray-500">Pay:</span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max={item.quantity}
+                                                    value={selectedItems[item.groupKey] || ''}
+                                                    onChange={(e) => handleItemSelection(item.groupKey, item.quantity, e.target.value)}
+                                                    className="w-12 text-center bg-transparent outline-none font-bold"
+                                                    placeholder="0"
+                                                />
+                                                <span className="text-xs text-gray-400">/ {item.quantity}</span>
+                                            </div>
+                                            <p className="font-bold w-24 text-right">
+                                                LKR {((selectedItems[item.groupKey] || 0) * item.price).toFixed(2)}
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <p className="font-bold">LKR {item.subtotal.toFixed(2)}</p>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -259,8 +383,8 @@ const BillingPage = () => {
                                         type="button"
                                         onClick={() => setPaymentMethod('CASH')}
                                         className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all ${paymentMethod === 'CASH'
-                                                ? 'bg-green-600 text-white shadow-lg'
-                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                            ? 'bg-green-600 text-white shadow-lg'
+                                            : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
                                             }`}
                                     >
                                         💵 Cash
@@ -269,8 +393,8 @@ const BillingPage = () => {
                                         type="button"
                                         onClick={() => setPaymentMethod('CARD')}
                                         className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all ${paymentMethod === 'CARD'
-                                                ? 'bg-blue-600 text-white shadow-lg'
-                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                            ? 'bg-blue-600 text-white shadow-lg'
+                                            : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
                                             }`}
                                     >
                                         💳 Card
@@ -301,7 +425,7 @@ const BillingPage = () => {
                         </div>
                         {calculatedBill && (
                             <div className="mb-6 p-6 bg-gray-100 dark:bg-gray-700 rounded-lg space-y-3">
-                                <h3 className="text-lg font-semibold mb-4">Bill Summary</h3>
+                                <h3 className="text-lg font-semibold mb-4">Bill Summary {splitBillMode && '(Partial)'}</h3>
                                 <div className="flex justify-between text-lg">
                                     <span>Subtotal:</span>
                                     <span className="font-semibold">LKR {calculatedBill.subtotal}</span>
@@ -325,7 +449,7 @@ const BillingPage = () => {
                             </div>
                         )}
                         <button onClick={() => setShowConfirm(true)} className="btn-success w-full text-lg py-3" disabled={loading}>
-                            {loading ? 'Processing...' : 'Finish Bill & Close Order'}
+                            {loading ? 'Processing...' : (splitBillMode ? 'Finish Partial Bill' : 'Finish Bill & Close Order')}
                         </button>
                     </div>
                 )}
@@ -335,8 +459,8 @@ const BillingPage = () => {
                 isOpen={showConfirm}
                 onClose={() => setShowConfirm(false)}
                 onConfirm={handleFinishBill}
-                title="Finish Bill"
-                message={`Are you sure you want to finish the bill for Table  ${selectedTable}?`}
+                title={splitBillMode ? "Finish Partial Bill" : "Finish Bill"}
+                message={`Are you sure you want to finish the ${splitBillMode ? 'partial ' : ''}bill for Table  ${selectedTable}?`}
             />
         </div>
     );
